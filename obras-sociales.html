@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Obras sociales · presentaciones y cobros</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: herramienta en pestañas que siguen el circuito real (recuento → stock → pedido → compra), con una franja de indicadores fija arriba */
+:root{
+  --bg:#F3F6F5; --surface:#FFFFFF; --ink:#14201E; --muted:#566865; --line:#D9E2DF;
+  --accent:#0B6E66; --accent-ink:#FFFFFF; --accent-soft:#E0EFEC;
+  --warn:#A9500B; --warn-soft:#FBEBDC; --ok:#2C7636; --ok-soft:#E2F0E3; --crit:#B3261E; --crit-soft:#F9E3E1;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1514; --surface:#15201F; --ink:#E3ECEA; --muted:#94A6A3; --line:#263431;
+  --accent:#4DBFB3; --accent-ink:#06201D; --accent-soft:#163029;
+  --warn:#EFA35F; --warn-soft:#3A2716; --ok:#7CCB8A; --ok-soft:#17301C; --crit:#F2877F; --crit-soft:#3A1A18; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1514; --surface:#15201F; --ink:#E3ECEA; --muted:#94A6A3; --line:#263431;
+  --accent:#4DBFB3; --accent-ink:#06201D; --accent-soft:#163029;
+  --warn:#EFA35F; --warn-soft:#3A2716; --ok:#7CCB8A; --ok-soft:#17301C; --crit:#F2877F; --crit-soft:#3A1A18; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:26px;line-height:1.15}
+h2{font-size:18px}
+h3{font-size:15px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+
+header.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+.demo{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--warn);background:var(--warn-soft);padding:4px 10px;border-radius:999px;font-weight:600}
+
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--surface);padding:12px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi b{font-family:var(--f-display);font-size:24px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12px;color:var(--muted)}
+.kpi.alert b{color:var(--warn)}
+
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+nav.tabs button{font:inherit;font-weight:600;background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;gap:8px;align-items:center}
+nav.tabs button .n{font-family:var(--f-mono);font-size:11px;border:1px solid currentColor;border-radius:4px;padding:0 5px}
+nav.tabs button .who-t{font-size:11px;font-weight:500;opacity:.8}
+nav.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+nav.tabs button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.panel{display:flex;flex-direction:column;gap:14px}
+.panel-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-end}
+.panel-head p{margin:4px 0 0;max-width:68ch;color:var(--muted)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;text-align:right;padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:bottom}
+td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+th.l,td.l{text-align:left}
+td.name{font-family:var(--f-body);white-space:normal;min-width:190px}
+td.name small{display:block;color:var(--muted);font-family:var(--f-mono);font-size:11px}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb,var(--accent-soft) 45%,transparent)}
+th.grp{background:var(--accent-soft);color:var(--accent)}
+td.grp{background:color-mix(in srgb,var(--accent-soft) 55%,transparent)}
+
+input[type=number],input[type=text],select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+input[type=number]{width:72px;text-align:right;font-family:var(--f-mono)}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
+textarea{width:100%;min-height:64px;resize:vertical}
+
+.chip{display:inline-block;font-family:var(--f-body);font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.crit{background:var(--crit-soft);color:var(--crit)}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.neg{color:var(--crit)}
+.pos{color:var(--warn)}
+
+.btn{font:inherit;font-weight:600;border-radius:7px;padding:8px 14px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:5px 10px;font-size:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+.note{border-left:3px solid var(--accent);padding:10px 14px;background:var(--surface);border-radius:0 8px 8px 0;color:var(--muted);font-size:13px;max-width:80ch}
+.note b{color:var(--ink)}
+.flash{padding:10px 14px;border-radius:8px;background:var(--ok-soft);color:var(--ok);font-weight:600}
+
+.rec-top{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;max-width:640px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px}
+.fecha{display:flex;flex-direction:column;gap:6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.fecha input,.fecha select{font:inherit;font-size:15px;text-transform:none;letter-spacing:0;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+.rec-top .buscar{flex:1;min-width:240px;position:static;padding:0}
+.buscar{display:flex;flex-direction:column;gap:6px;max-width:640px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:8px}
+.buscar input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.buscar small{font-size:12px}
+.cnt.hit .cnt-n mark{background:var(--accent-soft);color:var(--accent);border-radius:2px}
+.cnt-list{list-style:none;margin:0;padding:0;max-width:640px}
+.cnt{display:grid;grid-template-columns:minmax(0,1fr) 96px 56px;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.cnt:last-child{border-bottom:0}
+.cnt label{display:flex;flex-direction:column;cursor:pointer;min-width:0}
+.cnt-n{font-weight:600}
+.cnt small{color:var(--muted);font-size:12px}
+.cnt input[type=number]{width:100%;font-size:18px;padding:8px 10px}
+.cnt-u{font-size:12px;color:var(--muted)}
+.rec-head{display:flex;flex-wrap:wrap;gap:12px}
+.rec-head label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+input[type=date]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+.adj{display:inline-flex;gap:6px;align-items:center;cursor:pointer;justify-content:flex-end}
+.cot-form{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.cot-form label{display:flex;flex-direction:column;gap:3px;font-size:12px}
+.cot-form input[type=number]{width:140px;text-align:right}
+.btn.danger{color:var(--crit);border-color:var(--crit)}
+.ocm{position:fixed;inset:0;z-index:50;background:color-mix(in srgb,var(--ink) 45%,transparent);display:flex;justify-content:center;align-items:flex-start;overflow:auto;padding:calc(24px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.ocm-box{background:var(--surface);border-radius:12px;width:min(900px,100%);display:flex;flex-direction:column;gap:10px;padding-bottom:16px}
+.ocm-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--line)}
+.ocm-doc{padding:0 16px;overflow-x:auto}.ocm-doc .oc{border:1px solid #ddd;border-radius:6px}
+/* Stock por fecha */
+.split{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;align-items:start}
+.cell-stock{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.cell-stock small{font-size:11px;color:var(--muted)}
+tr.sel td{background:var(--accent-soft)}
+tbody.clickable tr{cursor:pointer}
+.chart{padding:16px;display:flex;flex-direction:column;gap:10px}
+.chart svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* Pedido */
+.ped-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;align-items:start}
+.ped-box{padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{font-family:var(--f-mono);font-size:12px;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0;user-select:text}
+
+/* Circuito */
+.board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.col-h{display:flex;justify-content:space-between;align-items:baseline;padding:0 2px;gap:6px}
+.col-h b{font-family:var(--f-display);font-size:13px}
+.col-h span{font-size:11px;color:var(--muted)}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;text-align:left;font:inherit;color:inherit;display:flex;flex-direction:column;gap:4px;width:100%}
+.pcard[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.pcard .num{font-family:var(--f-mono);font-weight:500}
+.pcard small{color:var(--muted);font-size:12px}
+.empty{font-size:12px;color:var(--muted);border:1px dashed var(--line);border-radius:8px;padding:10px;text-align:center}
+.detail{padding:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+.detail.wide{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr)}
+.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.timeline li{display:grid;grid-template-columns:14px 1fr;gap:10px;padding-bottom:12px;position:relative}
+.timeline li::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent);margin-top:5px}
+.timeline li.bad::before{background:var(--crit)}
+.timeline li.todo::before{background:transparent;border:2px solid var(--line)}
+.timeline li:not(:last-child)::after{content:"";position:absolute;left:4px;top:16px;bottom:0;width:2px;background:var(--line)}
+.timeline small{display:block;color:var(--muted);font-size:12px}
+.action{display:flex;flex-direction:column;gap:10px;background:var(--bg);border-radius:8px;padding:14px}
+.who{font-size:12px;font-weight:600;color:var(--accent)}
+.cot{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.cot:last-child{border-bottom:0}
+
+@media (max-width:900px){
+  .board{grid-template-columns:1fr 1fr}
+  .split,.ped-grid,.detail{grid-template-columns:1fr}
+  .kpis{grid-template-columns:1fr}
+}
+@media (max-width:520px){ .board{grid-template-columns:1fr} h1{font-size:22px} }
+@media (prefers-reduced-motion:no-preference){ .pcard,.btn{transition:border-color .15s, box-shadow .15s, opacity .15s} }
+</style>
+
+<style>
+[hidden]{display:none!important}
+.chip.mut{background:var(--line);color:var(--muted)}
+.kpis.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.duo{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:start}
+.pad{padding:16px;display:flex;flex-direction:column;gap:10px}
+.alist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.alist li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.alist li:last-child{border-bottom:0}
+.alist li.muted{display:block}
+.alist small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+.alist.tight li{padding:6px 0}
+.prog{font-size:14px}
+.bar{height:8px;background:var(--line);border-radius:999px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.crit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0}
+.dl dt{color:var(--muted);font-size:12.5px}
+.dl dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.lb{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600}
+.lb input,.lb select{font-weight:400}
+.fecha2{display:flex;flex-direction:column;gap:4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.fecha2 input,.fecha2 select{font:inherit;font-size:14px;text-transform:none;letter-spacing:0;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.fbar{display:flex;flex-wrap:wrap;gap:6px}
+.fbtn{font:inherit;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;gap:6px}
+.fbtn b{font-family:var(--f-mono);font-weight:500}
+.fbtn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+details.como{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;max-width:860px}
+details.como summary{cursor:pointer;font-weight:600;color:var(--accent)}
+details.como ol{margin:10px 0 4px;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--muted)}
+details.como b{color:var(--ink)}
+.ped-det{padding:18px;display:flex;flex-direction:column;gap:16px}
+.dl-msg{font-size:12px;color:var(--muted)}
+h3.sec{font-size:14px;margin:0 0 8px}
+.chart svg{max-height:260px}
+.flash{padding:10px 14px;border-radius:8px;background:var(--ok-soft);color:var(--ok);font-weight:600}
+@media (max-width:900px){.kpis.four{grid-template-columns:1fr 1fr}.duo,.crit-grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:520px){.kpis.four{grid-template-columns:1fr}}
+.bg{cursor:pointer;outline:none}
+.bg:hover .b{opacity:.85}
+.bg:focus-visible rect:first-child{stroke:var(--accent);stroke-width:2}
+tr.subrow>td{background:var(--bg);padding:6px 14px 14px}
+table.subt{font-size:13px}
+.kbtn{border:0;text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.kbtn:hover{background:var(--accent-soft)}
+.kbtn[aria-pressed="true"]{background:var(--accent-soft);box-shadow:inset 0 -3px 0 var(--accent)}
+.kbtn .hint{font-size:11px;color:var(--accent);font-weight:600}
+.pager{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--line);font-size:12px}
+.pager .pn{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.pager .btn[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.sec-a{scroll-margin-top:12px}
+tr.estrow{cursor:pointer}
+.fbar.tight{align-items:flex-end}
+</style>
+</head><body>
+<div class="wrap">
+  <header class="top">
+    <div><div class="eyebrow">Clínica · Administración</div><h1>Obras sociales</h1></div>
+    <span class="demo">Prototipo · obras sociales, montos y plazos de ejemplo</span>
+  </header>
+  <section class="kpis" id="kpis" aria-label="Indicadores"></section>
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button role="tab" data-tab="tablero" aria-selected="true"><span class="n">1</span>Tablero</button>
+    <button role="tab" data-tab="presentaciones" aria-selected="false"><span class="n">2</span>Presentaciones</button>
+    <button role="tab" data-tab="cobros" aria-selected="false"><span class="n">3</span>Cobros y proyección</button>
+    <button role="tab" data-tab="obras" aria-selected="false"><span class="n">4</span>Obras sociales</button>
+  </nav>
+  <main id="view"></main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ===== Utilidades ===== */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const fmt=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const HOY=fmt(new Date());
+const addD=(f,n)=>{const [y,m,d]=f.split('-').map(Number);return fmt(new Date(y,m-1,d+n));};
+const difD=(a,b)=>Math.round((new Date(b+'T12:00:00')-new Date(a+'T12:00:00'))/864e5);
+const dfull=f=>{const [y,m,d]=f.split('-');return `${d}/${m}/${y}`};
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const perLabel=p=>{const [y,m]=p.split('-');return MESES[m-1]+' '+y};
+const perAdd=(p,n)=>{const [y,m]=p.split('-').map(Number);const d=new Date(y,m-1+n,1);return `${d.getFullYear()}-${pad(d.getMonth()+1)}`};
+const money=n=>'$'+Math.round(n).toLocaleString('es-AR');
+const corto=n=>(n/1e6).toFixed(1).replace('.',',')+' M';
+const norm=s=>String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+const P_HOY=HOY.slice(0,7), P0=perAdd(P_HOY,-1);
+
+/* ===== Datos maestros de ejemplo ===== */
+// Códigos internos de ejemplo. En la clínica van los del nomenclador de cada convenio.
+const PREST=[
+ ['CON-OFT','Consulta oftalmológica',24000,60],['OCT','Tomografía de coherencia óptica (OCT)',62000,25],
+ ['CV','Campo visual computarizado',48000,12],['RTG','Retinografía',38000,14],['TOP','Topografía corneal',45000,8],
+ ['PAQ','Paquimetría',20000,10],['YAG','Capsulotomía láser (YAG)',210000,3],['IVT','Inyección intravítrea (honorarios y práctica)',380000,4],
+ ['CAT','Cirugía de catarata con lente intraocular',950000,5]];
+const pr=cod=>PREST.find(x=>x[0]===cod);
+// plazoCobro: días desde la presentación hasta el cobro esperado. Son valores de ejemplo: se ajustan con el histórico real de la clínica.
+const OS=[
+ {id:'pami',nombre:'PAMI',ambito:'Nacional',critica:true,plazoCobro:60,diaLimite:5,plazoReclamo:45,factor:.85,vol:2},
+ {id:'ssalud',nombre:'Subsidio de Salud de Tucumán',ambito:'Provincial',critica:true,plazoCobro:90,diaLimite:5,plazoReclamo:30,factor:.8,vol:1.2},
+ {id:'osde',nombre:'OSDE',ambito:'Nacional',plazoCobro:30,diaLimite:5,plazoReclamo:30,factor:1.15,vol:1},
+ {id:'swiss',nombre:'Swiss Medical',ambito:'Nacional',plazoCobro:30,diaLimite:5,plazoReclamo:30,factor:1.2,vol:.6},
+ {id:'galeno',nombre:'Galeno',ambito:'Nacional',plazoCobro:30,diaLimite:5,plazoReclamo:30,factor:1.1,vol:.5},
+ {id:'medife',nombre:'Medifé',ambito:'Nacional',plazoCobro:45,diaLimite:5,plazoReclamo:30,factor:1.05,vol:.4},
+ {id:'osecac',nombre:'OSECAC',ambito:'Nacional',plazoCobro:45,diaLimite:5,plazoReclamo:30,factor:.95,vol:.5},
+ {id:'sancor',nombre:'Sancor Salud',ambito:'Nacional',plazoCobro:30,diaLimite:5,plazoReclamo:30,factor:1.1,vol:.4},
+ {id:'ospe',nombre:'OSPE',ambito:'Nacional',plazoCobro:45,diaLimite:5,plazoReclamo:30,factor:.9,vol:.3},
+ {id:'iosfa',nombre:'IOSFA',ambito:'Nacional',plazoCobro:60,diaLimite:5,plazoReclamo:30,factor:.9,vol:.3}];
+const osOf=p=>OS.find(o=>o.id===p.os);
+const MOT=['Falta de autorización previa','Código o nomenclador incorrecto','Prestación no cubierta por el convenio','Documentación incompleta u orden ilegible','Prestación duplicada','Fuera del plazo de presentación','Otro motivo'];
+const EST={presentada:{t:'Presentada',c:'acc'},aprobada:{t:'Aprobada · a cobrar',c:'warn'},parcial:{t:'Cobrada parcial',c:'warn'},cobrada:{t:'Cobrada',c:'ok'}};
+const DEBEST={'a reclamar':{t:'A reclamar',c:'crit'},reclamado:{t:'Reclamado',c:'warn'},recuperado:{t:'Recuperado',c:'ok'},perdido:{t:'Dado por perdido',c:'mut'}};
+
+/* ===== Cálculos ===== */
+const tot=p=>p.items.reduce((s,i)=>s+i.cant*i.pu,0);
+const unids=p=>p.items.reduce((s,i)=>s+i.cant,0);
+const debRest=p=>p.deb.filter(d=>d.est!=='recuperado').reduce((s,d)=>s+d.monto,0);
+const aprob=p=>p.estado==='aprobada'?tot(p)-debRest(p):null;
+const cobrado=p=>p.cobros.reduce((s,c)=>s+c.monto,0);
+const saldo=p=>p.estado==='aprobada'?Math.max(0,aprob(p)-cobrado(p)):0;
+function est(p){
+  if(p.estado!=='aprobada') return p.estado;
+  if(saldo(p)<=0) return 'cobrada';
+  return cobrado(p)>0?'parcial':'aprobada';
+}
+const fEstCobro=p=>p.fManual||(p.fPres?addD(p.fPres,osOf(p).plazoCobro):null);
+function atraso(p){const e=est(p); if(e==='cobrada') return 0; const f=fEstCobro(p); return f&&f<HOY?difD(f,HOY):0;}
+/* Débito promedio de los últimos 3 meses: del total presentado en los 3 períodos anteriores al que se está presentando, qué porcentaje descontó la obra social */
+const PER3=()=>[perAdd(P0,-1),perAdd(P0,-2),perAdd(P0,-3)];
+function tasaDeb(os){
+  let d=0,t=0; P.filter(p=>p.os===os&&p.estado==='aprobada'&&PER3().includes(p.per)).forEach(p=>{d+=p.deb.reduce((s,x)=>s+x.monto,0);t+=tot(p);});
+  return t?d/t:.05;
+}
+function esperado(p){
+  const e=est(p);
+  if(e==='aprobada'||e==='parcial') return saldo(p);
+  if(e==='presentada') return Math.round(tot(p)*(1-tasaDeb(p.os)));
+  return 0;
+}
+const bucketDe=p=>atraso(p)>0?'atras':(fEstCobro(p)||'').slice(0,7);
+function buckets(){
+  const cols=['atras',P_HOY,perAdd(P_HOY,1),perAdd(P_HOY,2),perAdd(P_HOY,3)];
+  const lab=c=>c==='atras'?'Atrasado':perLabel(c).split(' ')[0]+' '+c.slice(2,4);
+  const val={}; cols.forEach(c=>val[c]=0); let masTarde=0;
+  const porOS={};
+  P.forEach(p=>{const v=esperado(p); if(v<=0) return; const b=bucketDe(p);
+    (porOS[p.os]=porOS[p.os]||{}); 
+    if(b in val){val[b]+=v;porOS[p.os][b]=(porOS[p.os][b]||0)+v;} else {masTarde+=v;porOS[p.os].mas=(porOS[p.os].mas||0)+v;}});
+  return {cols,lab,val,masTarde,porOS};
+}
+const plazoReal=os=>{const xs=[];P.filter(p=>p.os===os&&p.fPres).forEach(p=>{if(p.cobros.length){xs.push(difD(p.fPres,p.cobros.slice().sort((a,b)=>a.f.localeCompare(b.f))[0].f));}});return xs.length?Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null;};
+
+const pend=p=>{const e=est(p);return e==='aprobada'||e==='parcial'?saldo(p):(e==='presentada'?tot(p):0);};
+const ident=p=>p.n;
+/* ===== Datos de ejemplo (relativos a hoy, para que las alertas siempre tengan sentido) ===== */
+let P=[],seed=7,nextN=1;
+const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;};
+function mkItems(o){return PREST.map(([cod,desc,base,q])=>({cod,desc,cant:Math.max(0,Math.round(q*o.vol*(.75+rnd()*.5))),pu:Math.round(base*o.factor/100)*100})).filter(i=>i.cant>0);}
+const num=()=>'PR-'+String(nextN++).padStart(4,'0');
+function mk(os,offP,k,estado,o={}){
+  const so=OS.find(x=>x.id===os), per=perAdd(P0,-offP), fPres=addD(HOY,-k);
+  const p={n:num(),os,per,fPres,estado,items:mkItems(so),deb:[],cobros:[],log:[]};
+  p.log.push({f:addD(HOY,-k-3),q:'RP Sistemas',t:'Presentación generada en RP Sistemas.'});
+  p.log.push({f:fPres,q:'Facturación',t:`Presentó a ${so.nombre}.`});
+  if(estado==='aprobada'){
+    const fa=[addD(fPres,12),addD(HOY,-1)].sort()[0];
+    const t=tot(p), d=Math.round(t*(o.deb||0)/1000)*1000, es=o.debEst||['a reclamar','reclamado'];
+    if(d>0){ if(es.length===1) p.deb.push({f:fa,motivo:MOT[0],monto:d,est:es[0]});
+      else {const a=Math.round(d*.6/1000)*1000; p.deb.push({f:fa,motivo:MOT[0],monto:a,est:es[0]},{f:fa,motivo:MOT[3],monto:d-a,est:es[1]});} }
+    p.log.push({f:fa,q:'Facturación',t:`Registró la aprobación${p.deb.length?' con débitos por '+money(p.deb.reduce((s,x)=>s+x.monto,0)):' sin débitos'}.`});
+    if(o.cob){const m=o.cob>=1?aprob(p):Math.round(aprob(p)*o.cob/1000)*1000; p.cobros.push({f:addD(HOY,-(o.cobK||5)),monto:m,ref:['Orden de pago N° ','Recibo N° ','Transferencia N° '][nextN%3]+(100000+nextN*913)});
+      p.log.push({f:addD(HOY,-(o.cobK||5)),q:'Facturación',t:`Registró un cobro de ${money(m)}.`});}
+  }
+  P.push(p); return p;
+}
+[['pami',0,16,'presentada'],['osde',0,18,'presentada'],['swiss',0,18,'presentada'],['galeno',0,17,'presentada'],['osecac',0,15,'presentada'],['sancor',0,16,'presentada'],['ssalud',0,19,'presentada'],['medife',0,17,'presentada'],['ospe',0,18,'presentada'],['iosfa',0,15,'presentada']].forEach(a=>mk(...a));
+mk('pami',1,36,'presentada');
+mk('ssalud',1,38,'aprobada',{deb:.12,debEst:['a reclamar','reclamado']});
+mk('osde',1,35,'aprobada',{deb:.03,debEst:['a reclamar'],cob:.6,cobK:6});
+mk('swiss',1,34,'aprobada',{cob:1,cobK:10});
+mk('galeno',1,36,'aprobada',{deb:.05,debEst:['a reclamar']});
+mk('medife',1,34,'aprobada',{});
+mk('osecac',1,33,'presentada');
+mk('sancor',1,32,'aprobada',{deb:.02,debEst:['perdido'],cob:1,cobK:5});
+mk('ospe',1,34,'presentada');
+mk('iosfa',1,35,'presentada');
+mk('pami',2,70,'aprobada',{deb:.09,debEst:['a reclamar','reclamado'],cob:.55,cobK:8});
+mk('ssalud',2,66,'aprobada',{deb:.15,debEst:['reclamado','a reclamar']});
+mk('osde',2,64,'aprobada',{deb:.02,debEst:['recuperado'],cob:1,cobK:30});
+mk('galeno',2,63,'aprobada',{deb:.04,debEst:['perdido'],cob:1,cobK:28});
+mk('ospe',2,62,'aprobada',{cob:1,cobK:12});
+mk('ssalud',3,100,'aprobada',{deb:.14,debEst:['reclamado','perdido'],cob:.4,cobK:20});
+mk('pami',3,98,'aprobada',{deb:.07,debEst:['perdido'],cob:1,cobK:35});
+const EXTRA=[['OSPRERA','Nacional'],['OSPLAD','Nacional'],['OSDEPYM','Nacional'],['OSUOMRA','Nacional'],['OSPACA','Nacional'],['OSMATA','Nacional'],['OSCHOCA','Nacional'],['OSPSA','Nacional'],['OSPIT','Nacional'],['OSPEDYC','Nacional'],
+ ['OSPECON','Nacional'],['OSPAGA','Nacional'],['OSTV','Nacional'],['OSDOP','Nacional'],['OSFATLYF','Nacional'],['OSEF','Nacional'],['OSFE','Nacional'],['OSPJN','Nacional'],['OSSEG','Nacional'],['OSBA','Nacional'],
+ ['OSUTHGRA','Nacional'],['OSCRA','Nacional'],['OSTCARA','Nacional'],['OSPOCE','Nacional'],['OSMITA','Nacional'],['OSPSIP','Nacional'],['OSPIQYP','Nacional'],['OSPRA','Nacional'],['OSPLA','Nacional'],['OSAPM','Nacional'],
+ ['OSPF','Nacional'],['OSPERYHRA','Nacional'],['OSPIA','Nacional'],['OSPEC','Nacional'],['Unión Personal','Nacional'],['Federada Salud','Nacional'],['Accord Salud','Nacional'],['Jerárquicos Salud','Nacional'],['Luis Pasteur','Nacional'],['Omint','Nacional'],
+ ['Medicus','Nacional'],['Plan de Salud Hospital Italiano','Nacional'],['Avalian','Nacional'],['Prevención Salud','Nacional'],['Premedic','Nacional'],['Bristol Medicine','Nacional'],['DAMSU (UNT)','Provincial']];
+EXTRA.forEach(([nombre,ambito],i)=>OS.push({id:'x'+(i+1),nombre,ambito,plazoCobro:[30,45,30,60,45][i%5],diaLimite:5,plazoReclamo:30,factor:.9+(i%6)*.05,vol:.02+(i%7)*.012}));
+OS.slice(10).forEach((o,i)=>{
+  mk(o.id,0,15+(i%5),'presentada');
+  {const k=31+(i%8),t=i%4;
+    if(t===0) mk(o.id,1,k,'presentada');
+    else if(t===1) mk(o.id,1,k,'aprobada',{cob:1,cobK:2+(i%17)});
+    else if(t===2) mk(o.id,1,k,'aprobada',{deb:.03,debEst:['a reclamar'],cob:.7,cobK:3+(i%15)});
+    else mk(o.id,1,k,'aprobada',{});}
+  if(i%2===0) mk(o.id,2,62+(i%6),'aprobada',{cob:1,cobK:20+(i%30)});
+});
+/* Noviembre: el mes está en curso, así que solo presentaron algunas obras sociales */
+OS.forEach((o,j)=>{ if(j%5<2) mk(o.id,-1,1+(j%12),'presentada'); });
+P.sort((a,b)=>(b.fPres||'9999').localeCompare(a.fPres||'9999')||a.n.localeCompare(b.n));
+
+/* ===== Estado de la pantalla ===== */
+const S={tab:'tablero',bk:null,osx:null,per:perAdd(P0,-1),perG:P0,aPer:P_HOY,aEst:'todos',bEst:'todos',aQ:'',bQ:'',cQ:'',dQ:'',dPer:'todos',pg:{a:1,b:1,c:1,d:1,p:1,o:1,x:1,os:1},oQ:'',xQ:'',selP:null,fEst:'todos',fPer:'todos',q:'',imp:false,impPrev:null,flash:null};
+function addLog(p,q,t,f){p.log.push({f:f||HOY,q,t});}
+const chip=(t,c)=>`<span class="chip ${c}">${esc(t)}</span>`;
+const estChip=p=>{const e=est(p);return chip(EST[e].t,EST[e].c);};
+const atrChip=p=>{const a=atraso(p);return a?` ${chip('Atrasada '+a+' d','crit')}`:'';};
+
+/* ===== Descargas ===== */
+async function bajar(filename,data,msgSel){
+  const m=$(msgSel), show=t=>{if(m){m.textContent=t;m.hidden=false}};
+  if(window.claude&&window.claude.use){
+    try{const dl=await window.claude.use('downloads'); if(!dl){show('La descarga no está disponible en esta vista.');return;}
+      await dl.save({filename,data}); show('Listo: '+filename);
+    }catch(err){ if(err&&err.code==='declined') return; show('No se pudo descargar en esta vista.'); }
+    return;
+  }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data])); a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); show('Listo: '+filename);
+}
+function xlsxLibre(msg){if(typeof XLSX==='undefined'){const m=$(msg);if(m){m.textContent='No se pudo cargar el generador de Excel. Revisá la conexión.';m.hidden=false}return false}return true}
+function libroXlsx(hojas){
+  const wb=XLSX.utils.book_new();
+  hojas.forEach(([nombre,aoa,anchos])=>{const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=anchos.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,nombre);});
+  return XLSX.write(wb,{bookType:'xlsx',type:'array'});
+}
+function exportarTodo(msg){
+  if(!xlsxLibre(msg)) return;
+  const b=buckets();
+  const pres=[['N° de presentación (PR)','Obra social','Ámbito','Período','Fecha de presentación','Estado','Prestaciones (unidades)','Presentado','Débitos sin recuperar','Aprobado','Cobrado','Saldo a cobrar','Fecha estimada de cobro','Días de atraso'],
+    ...P.map(p=>[p.n,osOf(p).nombre,osOf(p).ambito,perLabel(p.per),p.fPres?dfull(p.fPres):'',EST[est(p)].t,unids(p),tot(p),debRest(p),aprob(p)??'',cobrado(p),saldo(p),fEstCobro(p)?dfull(fEstCobro(p)):'',atraso(p)])];
+  const lin=[['N° de presentación (PR)','Obra social','Período','Código','Prestación','Cantidad','Monto unitario','Subtotal'],...P.flatMap(p=>p.items.map(i=>[ident(p),osOf(p).nombre,perLabel(p.per),i.cod,i.desc,i.cant,i.pu,i.cant*i.pu]))];
+  const proy=[['Obra social',...b.cols.map(b.lab),'Más adelante','Total esperado'],...OS.map(o=>{const r=b.porOS[o.id]||{};const v=[...b.cols.map(c=>r[c]||0),r.mas||0];return [o.nombre,...v,v.reduce((s,x)=>s+x,0)];}).filter(r=>r[r.length-1]>0)];
+  bajar('Obras sociales - seguimiento '+HOY+'.xlsx',libroXlsx([['Presentaciones',pres,[18,30,11,16,14,20,12,14,14,14,14,14,14,10]],['Prestaciones',lin,[8,30,16,10,44,10,14,14]],['Proyección de cobros',proy,[30,14,14,14,14,14,14,16]]]),msg);
+}
+function plantilla(msg){
+  if(!xlsxLibre(msg)) return;
+  const aoa=[['Obra social','Período (AAAA-MM)','N° de presentación (PR)','Fecha de presentación','Código de prestación','Descripción','Cantidad','Monto unitario'],
+   ['PAMI',P0,'PR-0101',HOY,'OCT','Tomografía de coherencia óptica (OCT)',12,52700],
+   ['PAMI',P0,'PR-0101',HOY,'CON-OFT','Consulta oftalmológica',40,20400],
+   ['OSDE',P0,'PR-0102',HOY,'CAT','Cirugía de catarata con lente intraocular',3,1092500]];
+  bajar('Plantilla_importacion_presentaciones.xlsx',libroXlsx([['Presentaciones',aoa,[22,18,18,30,18,44,10,14]]]),msg);
+}
+
+function plantillaCobros(msg){
+  if(!xlsxLibre(msg)) return;
+  const ej=P.filter(p=>pend(p)>0).slice(0,2);
+  const aoa=[['Obra social','N° de presentación (PR)','Fecha de cobro','Monto cobrado','Referencia'],...ej.map(p=>[osOf(p).nombre,p.n,HOY,Math.round(pend(p)/2/1000)*1000,'Transf. 482913'])];
+  bajar('Plantilla_importacion_cobros.xlsx',libroXlsx([['Cobros',aoa,[30,30,16,16,22]]]),msg);
+}
+/* ===== Gráfico de proyección ===== */
+function barras(b,sel){
+  const cols=[...b.cols,'mas'], vals=cols.map(c=>c==='mas'?b.masTarde:b.val[c]), max=Math.max(...vals,1);
+  const W=640,H=230,bw=62,gap=(W-40-cols.length*bw)/(cols.length-1);
+  return `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Cobros esperados por mes. Tocá una barra para ver el desglose">`+
+   cols.map((c,i)=>{const h=Math.round(vals[i]/max*150),x=20+i*(bw+gap),y=180-h, nom=c==='mas'?'Más adelante':b.lab(c);
+     const col=c==='atras'?'var(--warn)':'var(--accent)', dim=sel&&sel!==c;
+     return `<g class="bg" data-bk="${c}" role="button" tabindex="0" aria-pressed="${sel===c}" aria-label="${nom}: ${vals[i]?money(vals[i]):'sin cobros esperados'}" opacity="${dim?.3:1}">
+       <rect x="${x-6}" y="6" width="${bw+12}" height="208" fill="transparent"/>
+       <rect class="b" x="${x}" y="${y}" width="${bw}" height="${h}" rx="3" fill="${col}"/>
+       ${sel===c?`<rect x="${x-3}" y="${y-3}" width="${bw+6}" height="${h+3}" rx="5" fill="none" stroke="var(--ink)" stroke-width="1.5"/>`:''}
+       <text x="${x+bw/2}" y="${y-8}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${vals[i]?corto(vals[i]):'–'}</text><text x="${x+bw/2}" y="200" text-anchor="middle" font-size="12" fill="${sel===c?'var(--ink)':'var(--muted)'}" font-weight="${sel===c?600:400}">${nom}</text></g>`;}).join('')+
+   `<line x1="14" x2="${W-14}" y1="180" y2="180" stroke="var(--line)"/></svg>`;
+}
+const colDe=(b,p)=>{const k=bucketDe(p);return b.cols.includes(k)?k:'mas';};
+
+/* ===== KPIs ===== */
+const kpiOn={pres:()=>S.tab==='tablero'&&S.per==='todos',cob:()=>S.tab==='tablero'&&S.dPer===P_HOY};
+function renderKpis(){
+  const hechas=P.filter(p=>pend(p)>0), pres=hechas.reduce((s,p)=>s+pend(p),0);
+  const atr=P.filter(p=>atraso(p)>0), am=atr.reduce((s,p)=>s+pend(p),0);
+  const cm=P.flatMap(p=>p.cobros).filter(c=>c.f.slice(0,7)===P_HOY).reduce((s,c)=>s+c.monto,0);
+  const k=(id,cls,big,txt)=>`<button class="kpi kbtn ${cls}" data-kpi="${id}"${kpiOn[id]?` aria-pressed="${kpiOn[id]()}"`:''}><b>${big}</b><span>${txt}</span><span class="hint">Tocá para ver el desglose</span></button>`;
+  $('#kpis').className='kpis';
+  $('#kpis').innerHTML=k('pres','',money(pres),'PRESENTADO')+k('cob','',money(cm),'COBRADO')+k('atras',atr.length?'alert':'',money(am),'COBROS ATRASADOS');
+}
+function applyKpi(k){
+  const on=kpiOn[k]?kpiOn[k]():false; S.tab='tablero'; S.flash=null;
+  S.aEst='todos';S.aQ='';S.aPer=P_HOY;S.bEst='todos';S.bQ='';S.cQ='';S.dQ='';S.dPer='todos';S.pg={a:1,b:1,c:1,d:1,p:1,o:1,x:1,os:1};
+  if(on){ if(k==='pres') S.per=perAdd(P0,-1); }
+  else{ if(k==='pres')S.per='todos'; else S.per=perAdd(P0,-1); if(k==='cob')S.dPer=P_HOY; }
+  render();
+  if(!on){const id={pres:'sec-b',atras:'sec-c',cob:'sec-d'}[k];
+    setTimeout(()=>document.getElementById(id)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}),30);}
+}
+document.getElementById('kpis').addEventListener('click',e=>{const b=e.target.closest('[data-kpi]');if(b)applyKpi(b.dataset.kpi);});
+/* Paginador común: 10 por página */
+const PERPAGE=10;
+function pagerH(key,total){
+  const pages=Math.max(1,Math.ceil(total/PERPAGE)); if(S.pg[key]>pages)S.pg[key]=pages; if(S.pg[key]<1)S.pg[key]=1;
+  const cur=S.pg[key],a=total?(cur-1)*PERPAGE+1:0,b=Math.min(total,cur*PERPAGE);
+  let nums='',prev=0;
+  for(let k=1;k<=pages;k++){ if(k===1||k===pages||Math.abs(k-cur)<=1){ if(prev&&k-prev>1) nums+='<span class="muted">…</span>'; nums+=`<button class="btn ghost sm" data-pg="${key}|${k}" aria-pressed="${k===cur}" aria-label="Página ${k}">${k}</button>`; prev=k; } }
+  return `<div class="pager"><span class="muted">Mostrando ${a}–${b} de ${total}</span><div class="pn"><button class="btn ghost sm" data-pg="${key}|${cur-1}" ${cur<=1?'disabled':''}>‹ Anterior</button>${nums}<button class="btn ghost sm" data-pg="${key}|${cur+1}" ${cur>=pages?'disabled':''}>Siguiente ›</button></div></div>`;
+}
+const pageOf=(key,list)=>{pagerH(key,list.length);const c=S.pg[key];return list.slice((c-1)*PERPAGE,c*PERPAGE);};
+
+/* ===== 1. Tablero ===== */
+function viewTablero(){
+  const pers=[P0,perAdd(P0,-1),perAdd(P0,-2),perAdd(P0,-3)];
+  /* A. Presentaciones pendientes: todas las obras sociales, por mes. Se presenta hasta el día 5 del mes siguiente */
+  const perA=S.aPer, limDe=o=>`${perAdd(perA,1)}-${pad(o.diaLimite)}`;
+  let fa=OS.map(o=>({o,p:P.find(x=>x.os===o.id&&x.per===perA)}));
+  const nFalta=fa.filter(f=>!f.p).length, nPres=fa.length-nFalta;
+  fa=fa.filter(f=>(S.aEst==='todos'||(S.aEst==='falta')===!f.p)&&(!S.aQ||norm(f.o.nombre).includes(norm(S.aQ))))
+       .sort((x,y)=>(!!x.p-!!y.p)||x.o.nombre.localeCompare(y.o.nombre,'es'));
+  const pageA=pageOf('a',fa);
+  const persA=[P_HOY,P0,perAdd(P0,-1)];
+  /* B. Estado de la presentación por obra social */
+  const base=P.filter(p=>S.per==='todos'||p.per===S.per);
+  const grupos=['presentada','aprobada','parcial','cobrada'].map(k=>{const xs=base.filter(p=>est(p)===k);return {k,n:xs.length,pres:xs.reduce((s,p)=>s+tot(p),0),cob:xs.reduce((s,p)=>s+cobrado(p),0),pen:xs.reduce((s,p)=>s+pend(p),0)};});
+  const T=grupos.reduce((t,g)=>({n:t.n+g.n,pres:t.pres+g.pres,cob:t.cob+g.cob,pen:t.pen+g.pen}),{n:0,pres:0,cob:0,pen:0});
+  const lb=base.filter(p=>(S.bEst==='todos'||est(p)===S.bEst)&&(!S.bQ||norm(osOf(p).nombre+' '+p.n).includes(norm(S.bQ))))
+     .sort((x,y)=>osOf(x).nombre.localeCompare(osOf(y).nombre,'es')||y.per.localeCompare(x.per));
+  const pageB=pageOf('b',lb);
+  /* C. Cobros atrasados */
+  const atAll=P.filter(p=>atraso(p)>0).sort((x,y)=>x.per.localeCompare(y.per)||ident(x).localeCompare(ident(y)));
+  const at=atAll.filter(p=>!S.cQ||norm(osOf(p).nombre+' '+p.n).includes(norm(S.cQ)));
+  const atTot=at.reduce((s,p)=>s+pend(p),0), pageC=pageOf('c',at);
+  /* D. Cobrado */
+  const cobsAll=P.flatMap(p=>p.cobros.map(c=>({p,c}))).sort((x,y)=>y.c.f.localeCompare(x.c.f)||x.p.n.localeCompare(y.p.n));
+  const mesesC=[...new Set(cobsAll.map(x=>x.c.f.slice(0,7)))].sort().reverse();
+  const cb=cobsAll.filter(x=>(S.dPer==='todos'||x.c.f.slice(0,7)===S.dPer)&&(!S.dQ||norm(osOf(x.p).nombre+' '+x.p.n+' '+(x.c.ref||'')).includes(norm(S.dQ))));
+  const cbTot=cb.reduce((s,x)=>s+x.c.monto,0), pageD=pageOf('d',cb);
+  const fila=(o,mes)=>P.find(x=>x.os===o.id&&x.per===mes);
+  const fbtn=(attr,val,cur,t,n)=>`<button class="fbtn" ${attr}="${val}" aria-pressed="${cur===val}">${t} <b>${n}</b></button>`;
+  const buscar=(f,v,ph)=>`<label class="fecha2">Buscar <input type="search" data-f="${f}" value="${esc(v)}" placeholder="${ph}" style="min-width:240px"></label>`;
+  return `<section class="panel">
+    ${S.flash?`<div class="flash">${S.flash}</div>`:''}
+
+    <div class="card pad sec-a" id="sec-a"><div class="row" style="justify-content:space-between"><div><h3>Presentaciones pendientes</h3>
+        <small class="muted">Cada obra social se presenta hasta el día 5 del mes siguiente a las prestaciones. Pasada esa fecha, si no se presentó, queda atrasada.</small></div>
+        <label class="fecha2">Prestaciones de <select data-f="aper">${persA.map(x=>`<option value="${x}" ${x===perA?'selected':''}>${perLabel(x)}</option>`).join('')}</select></label></div>
+      <div class="row" style="justify-content:space-between"><div class="prog"><b>${nPres}</b> de ${OS.length} presentaron las prestaciones de ${perLabel(perA)}</div><small class="muted">Fecha límite: ${dfull(limDe({diaLimite:5}))}</small></div>
+      <div class="bar"><i style="width:${Math.round(nPres/OS.length*100)}%"></i></div>
+      <div class="fbar tight">${fbtn('data-fa','todos',S.aEst,'Todas',OS.length)}${fbtn('data-fa','falta',S.aEst,'Sin presentar',nFalta)}${fbtn('data-fa','presentada',S.aEst,'Presentadas',nPres)}</div>
+      <div class="row">${buscar('aq',S.aQ,'Nombre de la obra social')}</div>
+      <div class="scroll"><table><thead><tr><th class="l">Obra social</th><th class="l">Estado</th><th>Fecha de presentación</th><th class="l">N° de PR</th><th>Presentado</th><th>Fecha límite</th></tr></thead><tbody>
+        ${pageA.map(({o,p})=>{const lim=limDe(o),atras=!p&&HOY>lim;return `<tr><td class="l name">${esc(o.nombre)}${o.critica?' <span class="chip warn">crítica</span>':''}<small>${o.ambito}</small></td>
+          <td class="l">${p?chip('Presentada','ok'):atras?chip('Falta presentar','crit'):chip('Pendiente','mut')}</td><td>${p?dfull(p.fPres):'–'}</td><td class="l">${p?`<button class="btn ghost sm" data-ver="${p.n}">${esc(p.n)}</button>`:'–'}</td><td>${p?money(tot(p)):'–'}</td>
+          <td>${dfull(lim)}${atras?` <span class="chip crit">atrasada ${difD(lim,HOY)} d</span>`:''}</td></tr>`}).join('')||'<tr><td class="l muted" colspan="6">No hay obras sociales con ese criterio.</td></tr>'}</tbody></table></div>
+      ${pagerH('a',fa.length)}</div>
+
+    <div class="card pad sec-a" id="sec-b"><div class="row" style="justify-content:space-between"><div><h3>Estado de la presentación del mes anterior</h3>
+        <small class="muted">${S.per==='todos'?'Todas las presentaciones, de todos los períodos':'Presentaciones con prestaciones de '+perLabel(S.per)}: en qué estado está cada una, cuánto se presentó, cuánto se cobró y cuánto falta. Tocá un estado para filtrar la lista por obra social.</small></div>
+        <label class="fecha2">Prestaciones de <select data-f="per"><option value="todos" ${S.per==='todos'?'selected':''}>Todos los períodos</option>${pers.slice(1).map(x=>`<option value="${x}" ${x===S.per?'selected':''}>${perLabel(x)}</option>`).join('')}</select></label></div>
+      <div class="scroll"><table><thead><tr><th class="l">Estado</th><th>Cant.</th><th>Presentado</th><th>Cobrado</th><th>Pendiente</th></tr></thead><tbody class="clickable">
+        ${grupos.map(g=>`<tr class="estrow ${S.bEst===g.k?'sel':''}" data-fb="${g.k}" tabindex="0"><td class="l">${chip(EST[g.k].t,EST[g.k].c)}</td><td>${g.n}</td><td>${g.n?money(g.pres):'–'}</td><td>${g.cob?money(g.cob):'–'}</td><td>${g.pen?money(g.pen):'–'}</td></tr>`).join('')}
+        <tr class="estrow ${S.bEst==='todos'?'sel':''}" data-fb="todos" tabindex="0"><td class="l"><b>Total</b></td><td><b>${T.n}</b></td><td><b>${money(T.pres)}</b></td><td><b>${money(T.cob)}</b></td><td><b>${money(T.pen)}</b></td></tr></tbody></table></div>
+      <h3 class="sec" style="margin-top:6px">Por obra social${S.bEst!=='todos'?` · ${EST[S.bEst].t}`:''}</h3>
+      <div class="row">${buscar('bq',S.bQ,'Obra social o N° de PR')}${S.bEst!=='todos'?`<button class="btn ghost sm" data-fb="todos" style="align-self:flex-end">Quitar filtro de estado</button>`:''}</div>
+      <div class="scroll"><table><thead><tr><th class="l">Obra social</th>${S.per==='todos'?'<th class="l">Período</th>':''}<th class="l">Estado</th><th>Presentado</th><th>Débitos</th><th>Cobrado</th><th>Pendiente</th><th></th></tr></thead><tbody>
+        ${pageB.map(p=>`<tr><td class="l name">${esc(osOf(p).nombre)}<small>${esc(p.n)} · presentada ${dfull(p.fPres)}</small></td>${S.per==='todos'?`<td class="l">${perLabel(p.per)}</td>`:''}<td class="l">${estChip(p)}${atrChip(p)}</td><td>${money(tot(p))}</td><td>${debRest(p)?money(debRest(p)):'–'}</td><td>${cobrado(p)?money(cobrado(p)):'–'}</td><td>${pend(p)?`<b>${money(pend(p))}</b>`:'–'}</td><td class="l"><button class="btn ghost sm" data-ver="${p.n}">Ver</button></td></tr>`).join('')||`<tr><td class="l muted" colspan="${S.per==='todos'?8:7}">No hay presentaciones con ese criterio.</td></tr>`}</tbody></table></div>
+      ${pagerH('b',lb.length)}</div>
+
+    <div class="card pad sec-a" id="sec-c"><div class="row" style="justify-content:space-between"><div><h3>Cobros atrasados</h3><small class="muted">Superaron los días pactados de pago de su obra social. Ordenados por período y número de presentación.</small></div><b class="mono neg">${money(atTot)}</b></div>
+      <div class="row">${buscar('cq',S.cQ,'Obra social o N° de PR')}</div>
+      <div class="scroll"><table><thead><tr><th class="l">N° de presentación (PR)</th><th class="l">Obra social</th><th class="l">Período</th><th>Presentado</th><th>Pendiente de cobro</th><th>Pactado para</th><th>Atraso</th><th></th></tr></thead><tbody>
+        ${pageC.map(p=>`<tr><td class="l">${esc(ident(p))}</td><td class="l name">${esc(osOf(p).nombre)}</td><td class="l">${perLabel(p.per)}</td><td>${money(tot(p))}</td><td><b>${money(pend(p))}</b></td><td>${dfull(fEstCobro(p))}</td><td class="neg">${atraso(p)} días</td><td class="l"><button class="btn ghost sm" data-ver="${p.n}">Ver</button></td></tr>`).join('')||'<tr><td class="l muted" colspan="8">No hay cobros atrasados con ese criterio.</td></tr>'}</tbody></table></div>
+      ${pagerH('c',at.length)}</div>
+
+    <div class="card pad sec-a" id="sec-d"><div class="row" style="justify-content:space-between"><div><h3>Cobrado</h3><small class="muted">Pagos recibidos de cada obra social, con el comprobante que envía al pagar (orden de pago, recibo o transferencia).</small></div><b class="mono">${money(cbTot)}</b></div>
+      <div class="row"><label class="fecha2">Mes del cobro <select data-f="dper"><option value="todos" ${S.dPer==='todos'?'selected':''}>Todos</option>${mesesC.map(x=>`<option value="${x}" ${x===S.dPer?'selected':''}>${perLabel(x)}</option>`).join('')}</select></label>${buscar('dq',S.dQ,'Obra social, N° de PR o comprobante')}</div>
+      <div class="scroll"><table><thead><tr><th class="l">Fecha de cobro</th><th class="l">Obra social</th><th class="l">N° de PR</th><th class="l">Período</th><th class="l">Comprobante</th><th>Monto cobrado</th></tr></thead><tbody>
+        ${pageD.map(({p,c})=>`<tr><td class="l">${dfull(c.f)}</td><td class="l name">${esc(osOf(p).nombre)}</td><td class="l"><button class="btn ghost sm" data-ver="${p.n}">${esc(p.n)}</button></td><td class="l">${perLabel(p.per)}</td><td class="l">${esc(c.ref||'–')}</td><td><b>${money(c.monto)}</b></td></tr>`).join('')||'<tr><td class="l muted" colspan="6">No hay cobros con ese criterio.</td></tr>'}</tbody></table></div>
+      ${pagerH('d',cb.length)}</div>
+
+    <div class="row" style="justify-content:space-between;margin-top:6px"><h2 style="font-size:16px">Gestión PAMI / Subsidio de Salud</h2>
+      <label class="fecha2">Mes de prestaciones <select data-f="perg">${pers.map(x=>`<option value="${x}" ${x===S.perG?'selected':''}>${perLabel(x)}</option>`).join('')}</select></label></div>
+    <div class="crit-grid">${OS.filter(o=>o.critica).map(o=>{
+      const p=fila(o,S.perG), pa=fila(o,perAdd(S.perG,-1)), real=plazoReal(o.id);
+      return `<div class="card pad crit-card"><div class="row" style="justify-content:space-between"><h3>${esc(o.nombre)}</h3>${p?`<span>${estChip(p)}${atrChip(p)}</span>`:chip('Sin presentar','crit')}</div>
+        <dl class="dl"><dt>Presentado (${perLabel(S.perG)})</dt><dd>${p?money(tot(p)):'–'}</dd>
+        <dt>Presentado mes anterior (${perLabel(perAdd(S.perG,-1)).split(' ')[0]})</dt><dd>${pa?money(tot(pa)):'–'}</dd>
+        <dt>Cobrado</dt><dd>${p&&cobrado(p)?money(cobrado(p)):'–'}</dd>
+        <dt>Pendiente de cobro</dt><dd><b>${p&&pend(p)?money(pend(p)):'–'}</b></dd>
+        <dt>Plazo de cobro</dt><dd>${o.plazoCobro} d pactado · ${real===null?'sin dato real':real+' d real'}</dd>
+        <dt>Débito promedio últimos 3 meses</dt><dd>${(tasaDeb(o.id)*100).toFixed(1).replace('.',',')} %</dd></dl>
+        <small class="muted">Débito promedio: del total presentado en los últimos 3 meses, el porcentaje que esta obra social descontó al auditar.</small>
+        <button class="btn ghost sm" data-fos="${o.id}">Ver todas sus presentaciones</button></div>`;}).join('')}</div>
+  </section>`;
+}
+
+/* ===== 2. Presentaciones ===== */
+function viewPresentaciones(){
+  const cnt=k=>P.filter(p=>est(p)===k).length;
+  const pers=[...new Set(P.map(p=>p.per))].sort().reverse();
+  let L=P.filter(p=>(S.fEst==='todos'||est(p)===S.fEst)&&(S.fPer==='todos'||p.per===S.fPer)&&(!S.q||norm(osOf(p).nombre+' '+p.n).includes(norm(S.q))));
+  const sel=P.find(p=>p.n===S.selP);
+  const pageL=pageOf('p',L);
+  return `<section class="panel">
+    <div class="panel-head"><div><h2>Presentaciones a obras sociales</h2></div></div>
+    ${S.flash?`<div class="flash">${S.flash}</div>`:''}
+    <details class="como"><summary>Cómo es el circuito estándar</summary><ol>
+      <li><b>Se presenta</b> a la obra social con las prestaciones del mes, antes del día límite que fija su convenio. La presentación queda registrada en RP Sistemas con su número de PR.</li>
+      <li><b>Llega acá</b> desde RP. Desde la fecha de presentación el sistema calcula la fecha estimada de cobro con el plazo de esa obra social.</li>
+      <li><b>Aprobada:</b> la obra social audita y aprueba todo o <b>debita</b> prestaciones (no las paga), por ejemplo por falta de autorización o un código incorrecto. Se registra el monto aprobado y cada débito con su motivo. Los débitos se reclaman dentro del plazo de la obra social.</li>
+      <li><b>Cobrada:</b> cada cobro llega desde RP Sistemas (puede ser parcial). Queda cerrada cuando el cobro cubre el monto aprobado.</li></ol></details>
+    <div class="fbar">${[['todos','Todas',P.length],...Object.entries(EST).map(([k,e])=>[k,e.t,cnt(k)])].map(([k,t,n])=>`<button class="fbtn" data-festado="${k}" aria-pressed="${S.fEst===k}">${t} <b>${n}</b></button>`).join('')}</div>
+    <div class="row"><label class="fecha2">Período <select data-f="fper"><option value="todos">Todos</option>${pers.map(x=>`<option value="${x}" ${S.fPer===x?'selected':''}>${perLabel(x)}</option>`).join('')}</select></label>
+      <label class="fecha2">Buscar <input type="search" data-f="q" value="${esc(S.q)}" placeholder="Obra social o N° de PR" style="min-width:230px"></label></div>
+    <div class="card scroll"><table><thead><tr><th class="l">Obra social</th><th class="l">Período</th><th>Presentada</th><th>Presta-<br>ciones</th><th>Presentado</th><th>Débitos</th><th>Aprobado</th><th>Cobrado</th><th>Saldo</th><th>Cobro estimado</th><th class="l">Estado</th></tr></thead>
+      <tbody class="clickable">${pageL.map(p=>{const e=est(p),fe=fEstCobro(p);return `<tr data-ver="${p.n}" class="${S.selP===p.n?'sel':''}" tabindex="0">
+        <td class="l name">${esc(osOf(p).nombre)}<small>${esc(ident(p))} · ${osOf(p).ambito}</small></td><td class="l">${perLabel(p.per)}</td>
+        <td>${p.fPres?dfull(p.fPres):'–'}</td><td>${unids(p)}</td><td>${money(tot(p))}</td>
+        <td>${debRest(p)?money(debRest(p)):'–'}</td><td>${p.estado==='aprobada'?money(aprob(p)):'–'}</td><td>${cobrado(p)?money(cobrado(p)):'–'}</td><td>${p.estado==='aprobada'&&saldo(p)>0?money(saldo(p)):'–'}</td>
+        <td class="${atraso(p)?'neg':''}">${fe&&e!=='cobrada'?dfull(fe):'–'}</td><td class="l">${estChip(p)}${atrChip(p)}</td></tr>`}).join('')||'<tr><td class="l muted" colspan="11">No hay presentaciones con esos filtros.</td></tr>'}</tbody></table>${pagerH('p',L.length)}</div>
+    <div class="row"><button class="btn ghost sm" data-act="excel">Descargar todo en Excel</button><span class="dl-msg" id="msg-x" hidden></span></div>
+    ${sel?detalle(sel):'<div class="note">Tocá una presentación de la lista para ver sus prestaciones, débitos, cobros y registrar el siguiente paso.</div>'}
+  </section>`;
+}
+function detalle(p){
+  const o=osOf(p),e=est(p),fe=fEstCobro(p);
+  let acc='';
+  if(e==='presentada') acc=`<div class="action"><div class="who">Siguiente paso: registrar la aprobación</div>
+      <label class="lb">Fecha en que la obra social informó la aprobación<input type="date" id="a-f" value="${HOY}"></label>
+      <div class="eyebrow">Débitos (dejá vacío si no hubo)</div>
+      ${[1,2].map(i=>`<div class="row"><select id="d${i}-m">${MOT.map(m=>`<option>${m}</option>`).join('')}</select><input type="number" id="d${i}-v" min="0" placeholder="Monto $" style="width:120px"></div>`).join('')}
+      <button class="btn" data-act="aprobar">Registrar aprobación</button></div>`;
+  else if(e!=='cobrada') acc=`<div class="action"><div class="who">Cobro</div><small class="muted">Los cobros llegan desde RP Sistemas. Saldo a cobrar: <b>${money(saldo(p))}</b>.</small>
+      <details class="como"><summary>Registrar un débito que llegó después</summary><div class="row" style="margin-top:8px"><select id="d3-m">${MOT.map(m=>`<option>${m}</option>`).join('')}</select><input type="number" id="d3-v" min="0" placeholder="Monto $" style="width:120px"><button class="btn ghost sm" data-act="debtardio">Agregar</button></div></details></div>`;
+  else acc=`<div class="note" style="border-color:var(--ok)">Presentación cobrada y cerrada.${p.deb.some(d=>d.est==='a reclamar'||d.est==='reclamado')?' Quedan débitos por gestionar: se ven abajo.':''}</div>`;
+  return `<div class="card ped-det" id="detalle">
+    <div class="row" style="justify-content:space-between"><div><div class="eyebrow">Presentación N° ${esc(ident(p))} · ${esc(o.ambito)}${o.critica?' · obra social crítica':''}</div><h3>${esc(o.nombre)} · prestaciones de ${perLabel(p.per)}</h3></div><div>${estChip(p)}${atrChip(p)}</div></div>
+    <div class="detail wide"><div>
+      <h3 class="sec">Resumen</h3><dl class="dl">
+        <dt>Presentado</dt><dd>${money(tot(p))}</dd><dt>Débitos sin recuperar</dt><dd>${debRest(p)?money(debRest(p)):'–'}</dd>
+        <dt>Aprobado</dt><dd>${p.estado==='aprobada'?money(aprob(p)):'–'}</dd><dt>Cobrado</dt><dd>${cobrado(p)?money(cobrado(p)):'–'}</dd><dt>Saldo a cobrar</dt><dd><b>${p.estado==='aprobada'?money(saldo(p)):'–'}</b></dd>
+        <dt>Cobro estimado</dt><dd>${fe?dfull(fe)+` <small class="muted">presentación + ${o.plazoCobro} días</small>`:'al presentar'}</dd></dl>
+      ${acc}
+      <h3 class="sec" style="margin-top:14px">Historial</h3><ul class="timeline">${p.log.slice().sort((a,b)=>a.f.localeCompare(b.f)).map(l=>`<li><div>${esc(l.t)}<small>${dfull(l.f)} · ${esc(l.q)}</small></div></li>`).join('')}</ul></div>
+    <div><h3 class="sec">Prestaciones que incluye (${unids(p)} unidades)</h3>
+      <div class="scroll"><table><thead><tr><th class="l">Prestación</th><th>Cant.</th><th>Monto unit.</th><th>Subtotal</th></tr></thead><tbody>${p.items.map(i=>`<tr><td class="l name">${esc(i.desc)}<small>${esc(i.cod)}</small></td><td>${i.cant}</td><td>${money(i.pu)}</td><td>${money(i.cant*i.pu)}</td></tr>`).join('')}<tr><td class="l" colspan="3"><b>Total presentado</b></td><td><b>${money(tot(p))}</b></td></tr></tbody></table></div>
+      ${p.deb.length?`<h3 class="sec" style="margin-top:14px">Débitos</h3><small class="muted" style="display:block;margin-bottom:6px">Un débito es lo que la obra social no paga de lo presentado al auditarlo. Se puede reclamar dentro del plazo de su convenio.</small><div class="scroll"><table><thead><tr><th class="l">Motivo</th><th>Monto</th><th>Reclamar hasta</th><th class="l">Estado</th><th></th></tr></thead><tbody>${p.deb.map((d,i)=>`<tr><td class="l name">${esc(d.motivo)}</td><td>${money(d.monto)}</td><td>${d.est==='a reclamar'?dfull(addD(d.f,o.plazoReclamo)):'–'}</td><td class="l">${chip(DEBEST[d.est].t,DEBEST[d.est].c)}</td><td class="l">${accionDeb(p,i)}</td></tr>`).join('')}</tbody></table></div>`:''}
+      ${p.cobros.length?`<h3 class="sec" style="margin-top:14px">Cobros registrados</h3><div class="scroll"><table><thead><tr><th class="l">Fecha</th><th class="l">Referencia</th><th>Monto</th></tr></thead><tbody>${p.cobros.map(c=>`<tr><td class="l">${dfull(c.f)}</td><td class="l">${esc(c.ref||'–')}</td><td>${money(c.monto)}</td></tr>`).join('')}</tbody></table></div>`:''}
+    </div></div></div>`;
+}
+function accionDeb(p,i){
+  const d=p.deb[i], b=(a,t)=>`<button class="btn ghost sm" data-deb="${p.n}|${i}|${a}">${t}</button>`;
+  if(d.est==='a reclamar') return b('reclamado','Marcar reclamado')+' '+b('perdido','Dar por perdido');
+  if(d.est==='reclamado') return b('recuperado','Se recuperó')+' '+b('perdido','Dar por perdido');
+  return '';
+}
+function viewImport(){
+  const v=S.impPrev;
+  return `<div class="card pad"><h3>Importar desde RP Sistemas</h3>
+    <p class="muted" style="margin:0;max-width:80ch">RP Sistemas es la base donde se registran las presentaciones y los pagos (a confirmar). Por ahora se cargan con sus exportaciones, usando dos plantillas: <b>presentaciones</b> (una fila por prestación) y <b>cobros</b> (una fila por pago). Cuando el tablero se incruste en el sistema de costeo, la conexión será directa y este paso desaparece.</p>
+    <div class="row"><button class="btn ghost sm" data-act="plantilla">Plantilla de presentaciones</button><button class="btn ghost sm" data-act="plantillacob">Plantilla de cobros</button><input type="file" id="imp-file" accept=".xlsx,.xls,.csv" aria-label="Archivo a importar"><span class="dl-msg" id="msg-p" hidden></span></div>
+    ${v?`<div class="note" style="max-width:none"><b>${esc(v.nombre)}:</b> ${v.tipo==='cobros'?`${v.cobros.length} ${v.cobros.length===1?'cobro para aplicar':'cobros para aplicar'}.`:`${v.grupos.length} ${v.grupos.length===1?'presentación nueva':'presentaciones nuevas'}, ${v.lineas} líneas de prestaciones.`}${v.errores.length?`<br><span class="neg">${v.errores.length} problema${v.errores.length>1?'s':''}:</span> ${v.errores.slice(0,6).map(esc).join(' · ')}`:''}</div>
+      ${(v.tipo==='cobros'?v.cobros.length:v.grupos.length)?`<div class="row"><button class="btn" data-act="confirmarimp">Confirmar importación</button><button class="btn ghost" data-act="cancelarimp">Cancelar</button></div>`:''}`:''}</div>`;
+}
+
+/* ===== 3. Cobros y proyección ===== */
+function viewCobros(){
+  const b=buckets(), sel=S.bk;
+  const nom=c=>c==='mas'?'Más adelante':b.lab(c);
+  const dl=P.flatMap(p=>p.deb.map((d,i)=>({p,d,i}))).filter(x=>(x.d.est==='a reclamar'||x.d.est==='reclamado')&&(!S.xQ||norm(osOf(x.p).nombre+' '+x.p.n+' '+x.d.motivo).includes(norm(S.xQ)))).sort((x,y)=>addD(x.d.f,osOf(x.p).plazoReclamo).localeCompare(addD(y.d.f,osOf(y.p).plazoReclamo)));
+  const cols=[...b.cols,'mas'];
+  const prs=P.filter(p=>esperado(p)>0&&(!sel||colDe(b,p)===sel));
+  const filas=OS.map(o=>{const ps=prs.filter(p=>p.os===o.id),r=b.porOS[o.id]||{};const v=cols.map(c=>c==='mas'?(r.mas||0):(r[c]||0));return {o,ps,v,t:ps.reduce((s,p)=>s+esperado(p),0)};}).filter(f=>f.ps.length&&(!S.oQ||norm(f.o.nombre).includes(norm(S.oQ)))).sort((x,y)=>y.t-x.t);
+  const pageO=pageOf('o',filas);
+  const nc=sel?4:cols.length+4;
+  const sub=ps=>`<tr class="subrow"><td colspan="${nc}"><div class="scroll"><table class="subt"><thead><tr><th class="l">N° de presentación (PR)</th><th class="l">Período</th><th class="l">Estado</th><th>Presentado</th><th>Pendiente de cobro</th><th>Cobro estimado</th><th>Atraso</th></tr></thead><tbody>
+    ${ps.slice().sort((x,y)=>x.per.localeCompare(y.per)||x.n.localeCompare(y.n)).map(p=>`<tr><td class="l"><button class="btn ghost sm" data-ver="${p.n}">${esc(p.n)}</button></td><td class="l">${perLabel(p.per)}</td><td class="l">${estChip(p)}</td><td>${money(tot(p))}</td><td><b>${money(esperado(p))}</b></td><td>${fEstCobro(p)?dfull(fEstCobro(p)):'–'}</td><td class="${atraso(p)?'neg':''}">${atraso(p)?atraso(p)+' días':'–'}</td></tr>`).join('')}</tbody></table></div></td></tr>`;
+  const cab=sel?`<th class="l">Obra social</th><th>PR</th><th class="${sel==='atras'?'neg':''}">${nom(sel)}</th><th></th>`:`<th class="l">Obra social</th><th>PR</th>${cols.map(c=>`<th class="${c==='atras'?'neg':''}">${nom(c)}</th>`).join('')}<th>Total</th>`;
+  const fila=f=>{const abierto=S.osx===f.o.id;return `<tr class="${abierto?'sel':''}"><td class="l name">${esc(f.o.nombre)}${f.o.critica?' <span class="chip warn">crítica</span>':''}</td><td>${f.ps.length}</td>${sel?`<td class="${sel==='atras'?'neg':''}"><b>${money(f.t)}</b></td>`:f.v.map((x,i)=>`<td class="${i===0&&x?'neg':''}">${x?money(x):'–'}</td>`).join('')+`<td><b>${money(f.v.reduce((s,x)=>s+x,0))}</b></td>`}${sel?'':''}<td class="l"><button class="btn ghost sm" data-osx="${f.o.id}" aria-expanded="${abierto}">${abierto?'Ocultar PR':'Ver PR'}</button></td></tr>${abierto?sub(f.ps):''}`;};
+  const tv=cols.map((c,i)=>filas.reduce((s,f)=>s+f.v[i],0));
+  const totSel=filas.reduce((s,f)=>s+f.t,0);
+  return `<section class="panel">
+    <div class="panel-head"><div><h2>Cobros y proyección</h2><p>Cuánto se espera cobrar y cuándo. Tocá una barra del gráfico para ver el desglose por obra social y, dentro de cada una, las PR que se deben. Las presentaciones y los cobros llegan desde RP Sistemas.</p></div></div>
+    ${S.flash?`<div class="flash">${S.flash}</div>`:''}
+    <div class="card pad"><div class="row" style="justify-content:space-between"><h3>Proyecciones de cobros + cobros atrasados</h3>${sel?`<span class="row"><span class="chip ${sel==='atras'?'crit':'acc'}">Mostrando: ${nom(sel)}</span><button class="btn ghost sm" data-bkclear="1">Ver todo</button></span>`:'<small class="muted">Mostrando todos los períodos</small>'}</div>
+      <div class="chart">${barras(b,sel)}</div></div>
+    <div class="row"><label class="fecha2">Buscar <input type="search" data-f="oq" value="${esc(S.oQ)}" placeholder="Obra social" style="min-width:240px"></label></div>
+    <div class="card scroll"><table><thead><tr>${cab}${sel?'':'<th></th>'}</tr></thead><tbody>
+      ${pageO.map(fila).join('')||`<tr><td class="l muted" colspan="${nc}">No hay PR en este período.</td></tr>`}
+      <tr><td class="l"><b>Total${sel?' '+nom(sel).toLowerCase():''}${S.oQ?' (con el filtro)':''}</b></td><td><b>${filas.reduce((s,f)=>s+f.ps.length,0)}</b></td>${sel?`<td><b>${money(totSel)}</b></td>`:tv.map(x=>`<td><b>${x?money(x):'–'}</b></td>`).join('')+`<td><b>${money(tv.reduce((s,x)=>s+x,0))}</b></td>`}<td></td></tr></tbody></table>${pagerH('o',filas.length)}</div>
+    <div class="row"><button class="btn ghost sm" data-act="excel">Descargar en Excel</button><span class="dl-msg" id="msg-x" hidden></span></div>
+    <div class="card pad"><h3>Débitos para reclamar</h3><div class="row"><label class="fecha2">Buscar <input type="search" data-f="xq" value="${esc(S.xQ)}" placeholder="Obra social, N° de PR o motivo" style="min-width:260px"></label></div><ul class="alist tight">${pageOf('x',dl).map(({p,d,i})=>{const lim=addD(d.f,osOf(p).plazoReclamo),dd=difD(HOY,lim);return `<li><span class="chip ${DEBEST[d.est].c}">${DEBEST[d.est].t}</span><div><b>${esc(osOf(p).nombre)} · ${money(d.monto)}</b><small>${esc(d.motivo)} · ${d.est==='reclamado'?'ya reclamado, esperando respuesta':dd<0?`plazo para reclamar vencido hace ${-dd} días`:`reclamar hasta el ${dfull(lim)}`}</small></div><button class="btn ghost sm" data-ver="${p.n}">Ver</button></li>`}).join('')||'<li class="muted">No hay débitos pendientes de gestión.</li>'}</ul>${pagerH('x',dl.length)}</div>
+  </section>`;
+}
+
+/* ===== 4. Obras sociales ===== */
+function viewObras(){
+  return `<section class="panel">
+    <div class="panel-head"><div><h2>Obras sociales</h2><p>La ficha de cada convenio. Los plazos que se cargan acá alimentan la proyección y las alertas. Se cargan una sola vez; el plazo real se calcula solo a medida que se registran cobros.</p></div></div>
+    ${S.flash?`<div class="flash">${S.flash}</div>`:''}
+    <div class="card scroll"><table><thead><tr><th class="l">Obra social</th><th class="l">Ámbito</th><th>Plazo de cobro<br>(días, configurado)</th><th>Plazo real<br>(promedio)</th><th>Día límite<br>de presentación</th><th>Plazo para<br>reclamar débitos</th><th>Débito promedio<br>últimos 3 meses</th><th>Presentaciones<br>abiertas</th></tr></thead><tbody>
+      ${pageOf('os',OS).map(o=>{const r=plazoReal(o.id),ab=P.filter(p=>p.os===o.id&&est(p)!=='cobrada').length;return `<tr><td class="l name">${esc(o.nombre)}${o.critica?' <span class="chip warn">crítica</span>':''}</td><td class="l">${o.ambito}</td>
+        <td class="grp"><input type="number" min="1" data-os="${o.id}" data-k="plazoCobro" value="${o.plazoCobro}" aria-label="Plazo de cobro ${esc(o.nombre)}"></td>
+        <td class="${r!==null&&r>o.plazoCobro?'neg':''}">${r===null?'–':r+' d'}</td>
+        <td class="grp"><input type="number" min="1" max="31" data-os="${o.id}" data-k="diaLimite" value="${o.diaLimite}" aria-label="Día límite ${esc(o.nombre)}"></td>
+        <td class="grp"><input type="number" min="1" data-os="${o.id}" data-k="plazoReclamo" value="${o.plazoReclamo}" aria-label="Plazo de reclamo ${esc(o.nombre)}"></td>
+        <td>${(tasaDeb(o.id)*100).toFixed(1).replace('.',',')} %</td><td>${ab}</td></tr>`}).join('')}</tbody></table>${pagerH('os',OS.length)}</div>
+    <div class="note">Plazo real mayor que el configurado (en rojo) significa que esa obra social paga más tarde de lo que supone la proyección: conviene subir el plazo configurado.</div>
+  </section>`;
+}
+
+/* ===== Render y eventos ===== */
+function render(){
+  renderKpis();
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===S.tab));
+  $('#view').innerHTML={tablero:viewTablero,presentaciones:viewPresentaciones,cobros:viewCobros,obras:viewObras}[S.tab]();
+}
+function go(tab,flash){S.tab=tab;S.flash=flash||null;render();window.scrollTo(0,0);}
+function ver(n){S.selP=n;S.tab='presentaciones';S.flash=null;S.fEst='todos';S.fPer='todos';S.q='';S.pg.p=1;render();setTimeout(()=>$('#detalle')?.scrollIntoView({behavior:'smooth',block:'start'}),30);}
+function elegirBk(c){S.bk=S.bk===c&&S.tab==='cobros'?null:c;S.osx=null;S.pg.o=1;const venia=S.tab;S.tab='cobros';S.flash=null;render();if(venia!=='cobros')window.scrollTo(0,0);}
+document.querySelector('nav.tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b)go(b.dataset.tab);});
+$('#view').addEventListener('keydown',e=>{const r=e.target.closest&&e.target.closest('tr[data-fb]');if(r&&(e.key==='Enter'||e.key===' ')){e.preventDefault();r.click();}});
+const QMAP={q:['q','p'],aq:['aQ','a'],bq:['bQ','b'],cq:['cQ','c'],dq:['dQ','d'],oq:['oQ','o'],xq:['xQ','x']};
+$('#view').addEventListener('input',e=>{const t=e.target,m=QMAP[t.dataset.f]; if(m){S[m[0]]=t.value;if(m[1])S.pg[m[1]]=1;const pos=t.selectionStart,f=t.dataset.f;render();const i=document.querySelector('[data-f="'+f+'"]');if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}}});
+$('#view').addEventListener('change',async e=>{
+  const t=e.target;
+  if(t.dataset.f==='per'){S.per=t.value;S.bEst='todos';S.pg.b=1;render();return;}
+  if(t.dataset.f==='aper'){S.aPer=t.value;S.aEst='todos';S.pg.a=1;render();return;}
+  if(t.dataset.f==='dper'){S.dPer=t.value;S.pg.d=1;render();return;}
+  if(t.dataset.f==='perg'){S.perG=t.value;render();return;}
+  if(t.dataset.f==='fper'){S.fPer=t.value;S.pg.p=1;render();return;}
+  if(t.dataset.os){const o=OS.find(x=>x.id===t.dataset.os);o[t.dataset.k]=Math.max(1,parseInt(t.value)||1);setTimeout(render,0);return;}
+  if(t.id==='imp-file'&&t.files[0]){
+    const f=t.files[0]; S.impPrev=null;
+    try{ S.impPrev=await leerArchivo(f); }catch(err){ S.impPrev={tipo:'presentaciones',nombre:f.name,grupos:[],lineas:0,errores:['No se pudo leer el archivo: '+err.message]}; }
+    render();
+  }
+});
+/* Lectura del archivo exportado de RP: una fila por prestación */
+function fechaDe(v){
+  if(v===''||v==null) return '';
+  if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return d?`${d.y}-${pad(d.m)}-${pad(d.d)}`:'';}
+  const s=String(v).trim(); let m;
+  if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  if((m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/))) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+  return '';
+}
+function perDe(v){
+  if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);return d?`${d.y}-${pad(d.m)}`:'';}
+  const s=String(v).trim(); let m;
+  if((m=s.match(/^(\d{4})-(\d{1,2})/))) return `${m[1]}-${pad(m[2])}`;
+  if((m=s.match(/^(\d{1,2})\/(\d{4})$/))) return `${m[2]}-${pad(m[1])}`;
+  return '';
+}
+const pickPR=r=>{const k=Object.keys(r).find(x=>norm(x).includes('(pr)'));return k===undefined?'':r[k];};
+function leerCobros(rows,nombre){
+  const errores=[], cobros=[];
+  const pick=(r,...ks)=>{const k=Object.keys(r).find(x=>ks.some(q=>norm(x).includes(q)));return k===undefined?'':r[k];};
+  rows.forEach((r,idx)=>{
+    const n=idx+2, nom=String(pick(r,'obra')).trim(); if(!nom) return;
+    const o=OS.find(x=>norm(x.nombre)===norm(nom)); if(!o){errores.push(`fila ${n}: obra social "${nom}" no está cargada`);return;}
+    const nr=String(pickPR(r)).trim(), p=P.find(x=>x.os===o.id&&x.n===nr);
+    if(!p){errores.push(`fila ${n}: no hay una presentación ${nr||'sin número'} de ${o.nombre}`);return;}
+    const monto=parseFloat(pick(r,'monto')), f=fechaDe(pick(r,'fecha'))||HOY, ref=String(pick(r,'referencia')).trim();
+    if(!(monto>0)){errores.push(`fila ${n}: monto inválido`);return;}
+    if(p.cobros.some(c=>c.f===f&&c.monto===monto&&(c.ref||'')===ref)||cobros.some(c=>c.p===p&&c.f===f&&c.monto===monto&&c.ref===ref)){errores.push(`fila ${n}: ese cobro ya está registrado`);return;}
+    cobros.push({p,f,monto,ref});
+  });
+  return {tipo:'cobros',nombre,cobros,errores};
+}
+async function leerArchivo(file){
+  const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+  if(Object.keys(rows[0]||{}).some(h=>norm(h).includes('monto cobrado')||norm(h).includes('fecha de cobro'))) return leerCobros(rows,file.name);
+  const errores=[], grupos={}; let lineas=0;
+  const pick=(r,...ks)=>{const k=Object.keys(r).find(x=>ks.some(q=>norm(x).includes(q)));return k===undefined?'':r[k];};
+  rows.forEach((r,idx)=>{
+    const n=idx+2, nom=String(pick(r,'obra')).trim(); if(!nom&&!String(pick(r,'codigo')).trim()) return;
+    const o=OS.find(x=>norm(x.nombre)===norm(nom));
+    if(!o){const m=`fila ${n}: obra social "${nom}" no está cargada`;if(!errores.includes(m))errores.push(m);return;}
+    const per=perDe(pick(r,'periodo')); if(!per){errores.push(`fila ${n}: período inválido`);return;}
+    const cant=parseFloat(pick(r,'cantidad')), pu=parseFloat(pick(r,'monto','precio','unitario'));
+    if(!(cant>0)||!(pu>=0)){errores.push(`fila ${n}: cantidad o monto inválido`);return;}
+    const nr=String(pickPR(r)).trim(), fp=fechaDe(pick(r,'fecha'));
+    if(!nr){errores.push(`fila ${n}: falta el N° de presentación (PR)`);return;}
+    if(!fp){errores.push(`fila ${n}: falta la fecha de presentación`);return;}
+    const key=nr, g=grupos[key]=grupos[key]||{os:o.id,per,pr:nr,fPres:fp,items:[]};
+    g.items.push({cod:String(pick(r,'codigo')).trim()||'S/C',desc:String(pick(r,'descripcion')).trim()||String(pick(r,'codigo')),cant,pu}); lineas++;
+  });
+  const lista=Object.values(grupos).filter(g=>{
+    if(P.some(p=>p.n===g.pr)){errores.push(`${g.pr}: ya está cargada`);return false;}return true;});
+  return {tipo:'presentaciones',nombre:file.name,grupos:lista,lineas:lista.reduce((s,g)=>s+g.items.length,0),errores};
+}
+$('#view').addEventListener('keydown',e=>{const g=e.target.closest&&e.target.closest('[data-bk]');if(g&&(e.key==='Enter'||e.key===' ')){e.preventDefault();elegirBk(g.dataset.bk);}});
+$('#view').addEventListener('click',e=>{
+  const bk=e.target.closest('[data-bk]'); if(bk){elegirBk(bk.dataset.bk);return;}
+  if(e.target.closest('[data-bkclear]')){S.bk=null;S.osx=null;S.pg.o=1;render();return;}
+  const pgb=e.target.closest('[data-pg]'); if(pgb){const [k,n]=pgb.dataset.pg.split('|');S.pg[k]=+n;render();return;}
+  const fab=e.target.closest('[data-fa]'); if(fab){S.aEst=fab.dataset.fa;S.pg.a=1;render();return;}
+  const fbb=e.target.closest('[data-fb]'); if(fbb){S.bEst=S.bEst===fbb.dataset.fb?'todos':fbb.dataset.fb;S.pg.b=1;render();return;}
+  const ox=e.target.closest('[data-osx]'); if(ox){S.osx=S.osx===ox.dataset.osx?null:ox.dataset.osx;render();return;}
+  const v=e.target.closest('[data-ver]'); if(v){ver(v.dataset.ver);return;}
+  const fo=e.target.closest('[data-fos]'); if(fo){S.q=OS.find(o=>o.id===fo.dataset.fos).nombre;S.pg.p=1;S.selP=null;S.fEst='todos';S.fPer='todos';S.tab='presentaciones';S.flash=null;render();window.scrollTo(0,0);return;}
+  const fe=e.target.closest('[data-festado]'); if(fe){S.fEst=fe.dataset.festado;S.pg.p=1;render();return;}
+  const tg=e.target.closest('[data-tab-go]'); if(tg){ go(tg.dataset.tabGo);return;}
+  const dd=e.target.closest('[data-deb]'); if(dd){const [n,i,a]=dd.dataset.deb.split('|');const p=P.find(x=>x.n===n),d=p.deb[+i];d.est=a;
+    addLog(p,'Facturación',{reclamado:`Reclamó el débito de ${money(d.monto)} (${d.motivo}).`,recuperado:`Se recuperó el débito de ${money(d.monto)}: vuelve a ser cobrable.`,perdido:`Dio por perdido el débito de ${money(d.monto)} (${d.motivo}).`}[a]);
+    S.flash=a==='recuperado'?`Débito recuperado: ${money(d.monto)} se suma otra vez al saldo a cobrar de ${ident(p)}.`:'Débito actualizado.';render();return;}
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const a=b.dataset.act, p=P.find(x=>x.n===S.selP), g=id=>document.getElementById(id);
+  if(a==='excel'){exportarTodo('#msg-x');return;}
+  if(a==='plantilla'){plantilla('#msg-p');return;}
+  if(a==='plantillacob'){plantillaCobros('#msg-p');return;}
+  if(a==='toggleimp'){S.imp=!S.imp;S.impPrev=null;S.flash=null;render();return;}
+  if(a==='cancelarimp'){S.impPrev=null;render();return;}
+  if(a==='confirmarimp'&&S.impPrev.tipo==='cobros'){
+    const cs=S.impPrev.cobros; cs.forEach(c=>{const p=c.p; if(p.estado==='presentada'){p.estado='aprobada';addLog(p,'Sistema','Pasó a aprobada al registrarse un cobro desde RP Sistemas.',c.f);}
+      p.cobros.push({f:c.f,monto:c.monto,ref:c.ref});addLog(p,'Sistema',`Importó un cobro de ${money(c.monto)} desde RP Sistemas.`,c.f);});
+    S.flash=`Se aplicaron ${cs.length} ${cs.length===1?'cobro':'cobros'} desde ${S.impPrev.nombre}.`;S.impPrev=null;S.imp=false;render();return;}
+  if(a==='confirmarimp'){
+    const gr=S.impPrev.grupos; gr.forEach(x=>{const pp={n:x.pr,os:x.os,per:x.per,fPres:x.fPres,estado:'presentada',items:x.items,deb:[],cobros:[],log:[]};
+      addLog(pp,'RP Sistemas',`Presentó a ${OS.find(o=>o.id===x.os).nombre}.`,x.fPres); addLog(pp,'Sistema',`Importó la presentación desde RP Sistemas (${S.impPrev.nombre}).`); P.unshift(pp);});
+    S.flash=`Se importaron ${gr.length} ${gr.length===1?'presentación':'presentaciones'} con ${S.impPrev.lineas} líneas de prestaciones.`;S.impPrev=null;S.imp=false;render();return;}
+  if(a==='aprobar'){const f=g('a-f').value||HOY;let td=0;
+    [1,2].forEach(i=>{const m=parseFloat(g('d'+i+'-v').value);if(m>0){p.deb.push({f,motivo:g('d'+i+'-m').value,monto:m,est:'a reclamar'});td+=m;}});
+    p.estado='aprobada';addLog(p,'Facturación',`Registró la aprobación${td?' con débitos por '+money(td):' sin débitos'}.`,f);
+    S.flash=`${ident(p)} aprobada por ${money(aprob(p))}${td?`. Quedaron ${money(td)} de débitos para reclamar.`:'.'}`;render();return;}
+  if(a==='debtardio'){const m=parseFloat(g('d3-v').value);if(!(m>0))return;p.deb.push({f:HOY,motivo:g('d3-m').value,monto:m,est:'a reclamar'});addLog(p,'Facturación',`Registró un débito de ${money(m)} (${g('d3-m').value}).`);S.flash='Débito registrado: el saldo a cobrar bajó.';render();return;}
+  if(a==='addos'){const n=g('os-n').value.trim();if(!n){g('os-err').textContent='Escribí el nombre.';g('os-err').hidden=false;return;}
+    if(OS.some(o=>norm(o.nombre)===norm(n))){g('os-err').textContent='Esa obra social ya existe.';g('os-err').hidden=false;return;}
+    OS.push({id:'os'+(OS.length+1),nombre:n,ambito:g('os-a').value,plazoCobro:parseInt(g('os-p').value)||45,diaLimite:5,plazoReclamo:30,factor:1,vol:.3});S.flash=`${n} agregada. Ya se puede cargar su primera presentación.`;render();return;}
+});
+render();
+
+</script>
+</body></html>

@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gestión de insumos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: barra superior + pestañas del circuito; la ecuación del stock es lo primero que se ve en Resumen.
+   Paleta: verde azulado profundo (acento), neutros con tinte frío, semáforo aparte del acento. */
+:root{
+  --bg:#f2f5f4; --surface:#ffffff; --ink:#14212a; --mute:#5b6a74; --line:#dce3e1; --soft:#eaf0ee;
+  --acc:#0c5b6b; --acc-ink:#ffffff; --acc-soft:#dfeef1;
+  --ok:#17744a; --ok-soft:#e1f3e9; --warn:#8f5a00; --warn-soft:#fbefd6; --bad:#b0281d; --bad-soft:#fce5e2;
+  --f-sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f171b; --surface:#162228; --ink:#e6eef0; --mute:#96a8b0; --line:#27373e; --soft:#1c2b32;
+  --acc:#5cb6c8; --acc-ink:#0b1b20; --acc-soft:#173a43;
+  --ok:#5ccb92; --ok-soft:#17382a; --warn:#e6b052; --warn-soft:#3b2d12; --bad:#f0857b; --bad-soft:#40201d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f171b; --surface:#162228; --ink:#e6eef0; --mute:#96a8b0; --line:#27373e; --soft:#1c2b32;
+  --acc:#5cb6c8; --acc-ink:#0b1b20; --acc-soft:#173a43;
+  --ok:#5ccb92; --ok-soft:#17382a; --warn:#e6b052; --warn-soft:#3b2d12; --bad:#f0857b; --bad-soft:#40201d; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--f-sans);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto;padding-block:14px 56px}
+button,input,select{font:inherit;color:inherit}
+.top{display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap;padding-bottom:12px}
+.brand h1{font-size:18px;margin:0;font-weight:600;letter-spacing:-.01em}
+.brand small{display:block;color:var(--mute);font-size:12px}
+.sp{flex:1}
+.role{display:flex;background:var(--soft);border-radius:9px;padding:3px;gap:2px}
+.role button{border:0;background:none;padding:6px 12px;border-radius:7px;cursor:pointer;color:var(--mute);font-weight:500}
+.role button[aria-pressed=true]{background:var(--surface);color:var(--acc);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.ghost{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 11px;cursor:pointer;color:var(--mute)}
+.ghost:hover{border-color:var(--acc);color:var(--acc)}
+.nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.nav button{border:0;background:none;padding:10px 14px;cursor:pointer;color:var(--mute);font-weight:500;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-5px}
+.nav button .n{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--soft);font-size:11px;margin-right:6px;font-family:var(--f-mono)}
+.nav button[aria-selected=true]{color:var(--acc);border-bottom-color:var(--acc)}
+.nav button[aria-selected=true] .n{background:var(--acc);color:var(--acc-ink)}
+main{display:grid;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.card h2{margin:0 0 4px;font-size:15px;font-weight:600}
+.card .sub{color:var(--mute);font-size:13px;margin:0 0 12px}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);font-weight:600}
+.eq{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}
+.eq .b{flex:1 1 150px;background:var(--soft);border-radius:10px;padding:10px 12px;min-width:0}
+.eq .b b{display:block;font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.eq .b.res{background:var(--acc);color:var(--acc-ink)} .eq .b.res .lbl{color:inherit;opacity:.85}
+.eq .op{align-self:center;font-size:22px;color:var(--mute);font-family:var(--f-mono)}
+.kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.kpi b{display:block;font-size:22px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi small{color:var(--mute)}
+.two{display:grid;gap:14px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media(max-width:820px){.two{grid-template-columns:minmax(0,1fr)}}
+.alist{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.alist li{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:9px;background:var(--soft)}
+.alist li.bad{background:var(--bad-soft)} .alist li.warn{background:var(--warn-soft)}
+.alist .t{flex:1;min-width:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);font-weight:600;white-space:nowrap}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.m{font-family:var(--f-mono);font-size:12px}
+tfoot td{font-weight:600;border-bottom:0}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.tw table th{background:var(--soft)}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;background:var(--soft);color:var(--mute)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.acc{background:var(--acc-soft);color:var(--acc)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--acc)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:4px 10px;font-size:12px}
+.kbtn{text-align:left;cursor:pointer;width:100%;font:inherit;color:inherit}
+.kbtn:hover{border-color:var(--acc)}
+.kbtn[aria-pressed=true]{border-color:var(--acc);background:var(--acc-soft);box-shadow:0 0 0 3px var(--acc-soft)}
+.eq button.b{border:0;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--soft)}
+.eq button.b.res{background:var(--acc);color:var(--acc-ink)}
+.eq button.b:hover{box-shadow:0 0 0 2px var(--acc-soft)}
+.eq button.b[aria-pressed=true]{box-shadow:0 0 0 3px var(--acc)}
+.eq button.b.res[aria-pressed=true]{box-shadow:0 0 0 3px var(--ink)}
+.fbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px}
+.fbar .f{min-width:150px}.fbar .f.grow{flex:1;min-width:200px}
+.pager{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:10px}
+.pager .row{gap:4px}
+.chart{display:flex;align-items:flex-end;gap:10px;height:210px;border-bottom:1px solid var(--line);padding-top:8px}
+.cbar{flex:1;min-width:46px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;background:none;border:0;border-radius:8px 8px 0 0;cursor:pointer;padding:0;font:inherit;color:inherit}
+.cbar:disabled{cursor:default;opacity:.55}
+.cbar:not(:disabled):hover{background:var(--soft)}
+.cbar[aria-pressed=true]{background:var(--acc-soft);box-shadow:0 0 0 2px var(--acc)}
+.cbar .v{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.cbar .cb{width:100%;max-width:64px;border-radius:6px 6px 0 0;min-height:2px}
+.clabels{display:flex;gap:10px;margin-top:6px}
+.clabels span{flex:1;min-width:46px;text-align:center;font-size:12px;color:var(--mute)}
+.btn[aria-pressed=true]{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.f span{display:block;margin-bottom:4px}
+.f input,.f select,.scan input,.cant{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.scan input{font:500 16px var(--f-mono);padding:14px;border:2px solid var(--acc)}
+.scan input:focus,.f input:focus,.f select:focus{outline:3px solid var(--acc-soft)}
+.cant{width:90px;text-align:right;font-variant-numeric:tabular-nums}
+.msg{padding:10px 12px;border-radius:9px;margin-top:10px;font-size:13px;background:var(--soft)}
+.msg.ok{background:var(--ok-soft);color:var(--ok)} .msg.warn{background:var(--warn-soft);color:var(--warn)} .msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg b{font-weight:600}
+.bar{height:7px;border-radius:4px;background:var(--soft);overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;background:var(--acc)}
+.bar.full i{background:var(--ok)}
+.empty{padding:22px;text-align:center;color:var(--mute)}
+.fac{border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:6px;background:var(--surface)}
+.fac.sel{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
+.facs{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.chk{display:flex;gap:8px;align-items:center}
+.log{display:grid;gap:5px;margin:0;padding:0;list-style:none;font-size:13px}
+.log li{display:flex;gap:8px;align-items:baseline}
+.log time{color:var(--mute);font-family:var(--f-mono);font-size:11px}
+details summary{cursor:pointer;color:var(--acc);font-weight:500}
+.note{color:var(--mute);font-size:12px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:9px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
+.toast.on{opacity:1}
+.steps{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 4px}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+</style>
+</head><body>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><h1>Gestión de insumos</h1><small>Compras · recepción · quirófano · inventario · stock</small></div>
+    <span class="sp"></span>
+    <div class="role" role="group" aria-label="Vista según el usuario">
+      <button id="r-admin" data-act="role" data-v="admin" aria-pressed="true">Administración</button>
+      <button id="r-quir" data-act="role" data-v="quir" aria-pressed="false">Instrumentista</button>
+    </div>
+    <button class="ghost" id="reset" data-act="reset">Reiniciar demo</button>
+  </div>
+  <nav class="nav" id="nav" role="tablist" aria-label="Pasos del circuito"></nav>
+  <main id="main"></main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+'use strict';
+const GS='\x1d';
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return iso(d)};
+const HOY=iso(new Date());
+const ar=s=>s?s.split('-').reverse().join('/'):'';
+const money=n=>'$ '+Math.round(n||0).toLocaleString('es-AR');
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dias=f=>Math.round((new Date(f+'T12:00:00')-new Date(HOY+'T12:00:00'))/864e5);
+const num=v=>{const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n};
+
+/* ---------- Maestro de insumos (ejemplo) ---------- */
+function ean13(b){let s=0;for(let i=0;i<12;i++)s+=(+b[i])*(i%2?3:1);return b+((10-s%10)%10)}
+const g14=b=>'0'+ean13(b);
+const MAESTRO=[
+ {id:'LIO-200',desc:'Lente intraocular plegable +20,0',serie:true, cu:165000,gtin:g14('779001000001')},
+ {id:'LIO-210',desc:'Lente intraocular plegable +21,0',serie:true, cu:165000,gtin:g14('779001000002')},
+ {id:'LIO-220',desc:'Lente intraocular plegable +22,0',serie:true, cu:165000,gtin:g14('779001000003')},
+ {id:'ACT-01', desc:'Anillo de tensión capsular',      serie:true, cu:38000, gtin:g14('779001000004')},
+ {id:'VIS-02', desc:'Viscoelástico 2% (jeringa)',      serie:false,cu:22000, gtin:g14('779001000005')},
+ {id:'BIS-23', desc:'Bisturí V-lance 23G',             serie:false,cu:4800,  gtin:null,gtinReal:g14('779001000099')},
+ {id:'SUT-10', desc:'Sutura nylon 10/0 doble aguja',   serie:false,cu:9500,  gtin:g14('779001000007')},
+ {id:'JER-05', desc:'Jeringa descartable 5 ml',        serie:false,cu:180,   gtin:g14('779001000008')},
+ {id:'GAS-10', desc:'Gasa estéril (sobre x10)',        serie:false,cu:1250,  gtin:g14('779001000009')},
+ {id:'GUA-75', desc:'Guantes quirúrgicos estériles 7½',serie:false,cu:1150,  gtin:g14('779001000010')},
+ {id:'PRO-01', desc:'Propofol 1% x 20 ml (ampolla)',   serie:false,cu:3900,  gtin:g14('779001000011')}
+];
+const PACIENTES=[['HC-0001','Paciente demo A. L.'],['HC-0002','Paciente demo B. M.'],['HC-0003','Paciente demo C. R.'],['HC-0004','Paciente demo D. S.'],['HC-0005','Paciente demo E. T.']];
+const PROCS=['Facoemulsificación + LIO','Vitrectomía','Trabeculectomía','Inyección intravítrea'];
+const CIRS=['Dr. Demo Uno','Dra. Demo Dos'];
+const QUIRS=['Quirófano 1','Quirófano 2'];
+const ins=id=>MAESTRO.find(x=>x.id===id);
+
+/* ---------- Estado (en el navegador; al conectarlo se reemplaza por el sistema) ---------- */
+const KEY='circuito_insumos_demo_v2';
+let S;
+function nid(){return S.uid++}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function load(){try{const v=localStorage.getItem(KEY);if(v){const o=JSON.parse(v);if(o&&o.items&&o.movs)return o}}catch(e){}return null}
+function mov(f,tipo,i,cant,cu,ref){S.movs.push({id:nid(),f,per:S.per,tipo,ins:i,cant,cu,ref:ref||''})}
+function addItem(i,o){const it={id:nid(),ins:i,lote:o.lote||'',venc:o.venc||'',cant:o.cant==null?1:o.cant,serieNo:o.serieNo||'',cu:o.cu,estado:'stock',fIng:o.f,fac:o.fac||''};S.items.push(it);mov(o.f,o.tipo,i,it.cant,o.cu,o.ref);return it}
+function seedProg(){S.prog=[];[[1,'08:00','HC-0004',PROCS[0],CIRS[0],QUIRS[0]],[1,'10:30','HC-0005',PROCS[3],CIRS[1],QUIRS[1]],[2,'08:00','HC-0001',PROCS[1],CIRS[1],QUIRS[0]],[4,'09:00','HC-0002',PROCS[2],CIRS[0],QUIRS[0]]].forEach(a=>S.prog.push({id:nid(),f:addDays(a[0]),h:a[1],hc:a[2],proc:a[3],cir:a[4],q:a[5],estado:'programada'}))}
+function seed(){
+  S={uid:1,per:1,items:[],movs:[],facturas:[],cirugias:[],gtinmap:{},invs:[],
+     inv:{cont:{},seen:[],serieDone:false},log:[],cart:[],var:[],tab:'resumen',role:'admin',recSel:null,cab:{pac:'',proc:'',cir:'',prog:null,f:HOY},prog:[],exSolo:false,cf:'todos',open:{},fDesde:addDays(-30),fHasta:addDays(30),sf:null,qs:'',sd1:'',sd2:'',cq:'',cd1:'',cd2:'',pg:{stock:1,compras:1,mov:1,ex:1},chM:'valor'};
+  const f0=addDays(-45);
+  const ser=(i,n,pref,lote,vencs)=>{for(let k=0;k<n;k++)addItem(i,{tipo:'SI',f:f0,cu:ins(i).cu,lote,venc:vencs[k]||vencs[vencs.length-1],serieNo:pref+(1000+k),ref:'Saldo inicial'})};
+  ser('LIO-200',3,'A','L2401',[addDays(420)]);
+  ser('LIO-210',4,'B','L2402',[addDays(25),addDays(380)]);
+  ser('LIO-220',3,'C','L2403',[addDays(400)]);
+  ser('ACT-01',4,'D','L2404',[addDays(500)]);
+  const lot=(i,n,lote,v)=>addItem(i,{tipo:'SI',f:f0,cu:ins(i).cu,lote,venc:v,cant:n,ref:'Saldo inicial'});
+  lot('VIS-02',3,'V2301',addDays(48)); lot('VIS-02',5,'V2307',addDays(520));
+  lot('BIS-23',30,'B2310',addDays(300)); lot('SUT-10',20,'S2305',addDays(600)); lot('JER-05',200,'J2309',addDays(700));
+  lot('GAS-10',120,'G2311',addDays(900)); lot('GUA-75',150,'U2308',addDays(500)); lot('PRO-01',40,'P2312',addDays(70));
+  const mk=(prov,cuit,nro,dF,pago,lin)=>{const f={id:nid(),prov,cuit,nro,fecha:addDays(dF),pago,lineas:lin.map(l=>({id:nid(),ins:l[0],cant:l[1],cu:l[2],rec:l[3]||0}))};S.facturas.push(f);return f};
+  const recibir=(f,dR,det)=>det.forEach(d=>{const cu=f.lineas.find(l=>l.ins===d[0]).cu;
+    if(ins(d[0]).serie){for(let k=0;k<d[1];k++)addItem(d[0],{tipo:'COMPRA',f:addDays(dR),cu,lote:d[2],venc:d[3],serieNo:d[4]+k,fac:f.id,ref:'Fac. '+f.nro})}
+    else addItem(d[0],{tipo:'COMPRA',f:addDays(dR),cu,lote:d[2],venc:d[3],cant:d[1],fac:f.id,ref:'Fac. '+f.nro})});
+  const DRO=['Droguería Central S.R.L.','30-00000000-2'],OPT=['Óptica Sur S.A.','30-00000000-1'],INS=['Instrumental Quirúrgico Norte','30-00000000-3'];
+  const f5=mk(DRO[0],DRO[1],'A 0003-00004390',-40,{estado:'pagada',fecha:addDays(-12)},[['GAS-10',60,1250,60],['GUA-75',50,1150,50]]);
+  recibir(f5,-38,[['GAS-10',60,'G2310',addDays(880)],['GUA-75',50,'U2309',addDays(520)]]);
+  const f6=mk(OPT[0],OPT[1],'A 0007-00001150',-25,{estado:'pendiente',vence:addDays(-3)},[['LIO-200',2,165000,2]]);
+  recibir(f6,-23,[['LIO-200',2,'L2410',addDays(450),'A200']]);
+  const f1=mk(DRO[0],DRO[1],'A 0003-00004512',-20,{estado:'pagada',fecha:addDays(-5)},[['SUT-10',12,9500,10],['PRO-01',20,3900,20],['JER-05',100,180,100]]);
+  recibir(f1,-18,[['SUT-10',10,'S2402',addDays(640)],['PRO-01',20,'P2403',addDays(330)],['JER-05',100,'J2403',addDays(700)]]);
+  mk(INS[0],INS[1],'A 0012-00000877',-3,{estado:'pendiente',vence:addDays(27)},[['BIS-23',20,5300],['SUT-10',10,10200]]);
+  mk(OPT[0],OPT[1],'A 0007-00001203',-2,{estado:'pendiente',vence:addDays(28)},[['LIO-210',4,178000],['LIO-220',2,178000],['ACT-01',2,41000]]);
+  mk(DRO[0],DRO[1],'A 0003-00004698',-1,{estado:'pendiente',vence:addDays(29)},[['VIS-02',6,24500],['GAS-10',100,1350],['GUA-75',100,1250],['PRO-01',30,4200],['JER-05',100,195]]);
+  const cons=(f,pac,proc,cir,units,h,q)=>{const c={id:nid(),f,hc:pac,proc,cir,units:[],per:1,h,q};
+    units.forEach(([i,idx])=>{const u=S.items.filter(x=>x.ins===i&&x.estado==='stock')[idx];u.estado='consumido';u.cirId=c.id;c.units.push(u.id);mov(f,'CONSUMO',i,-1,u.cu,pac+' · '+proc)});
+    S.cirugias.push(c)};
+  seedProg();
+  cons(addDays(-12),'HC-0001',PROCS[0],CIRS[0],[['LIO-210',1]],'08:00',QUIRS[0]);
+  cons(addDays(-9),'HC-0002',PROCS[0],CIRS[1],[['LIO-220',0],['ACT-01',0]],'09:30',QUIRS[1]);
+  cons(addDays(-3),'HC-0003',PROCS[1],CIRS[0],[['ACT-01',0]],'08:30',QUIRS[0]);
+  save();
+}
+S=load()||(seed(),S);S=Object.assign({sf:null,qs:'',sd1:'',sd2:'',cq:'',cd1:'',cd2:'',pg:{stock:1,compras:1,mov:1,ex:1},chM:'valor'},S);if(!S.prog)seedProg();S.msg=null;S.pend=null;S.learn=null;S.imp=null;
+
+/* ---------- Lectura de códigos (GS1: DataMatrix / QR) ---------- */
+function gs1Date(s){if(!/^\d{6}$/.test(s))return'';const y=2000+ +s.slice(0,2),m=+s.slice(2,4);let d=+s.slice(4,6);if(m<1||m>12)return'';if(d===0)d=new Date(y,m,0).getDate();return y+'-'+pad(m)+'-'+pad(d)}
+const FIXED={'01':14,'11':6,'15':6,'17':6},VAR=['10','21'];
+function parseAI(s){
+  s=s.replace(/\\x1d/g,GS).replace(/^\][A-Za-z]\d/,'');
+  const ai={};let m;
+  if(/^\(\d{2}\)/.test(s)){const re=/\((\d{2})\)([^()]*)/g;while((m=re.exec(s)))ai[m[1]]=m[2].trim();return Object.keys(ai).length?ai:null}
+  if(s[0]===GS)s=s.slice(1);
+  let i=0,g=0;
+  while(i<s.length&&g++<12){
+    if(s[i]===GS){i++;continue}
+    const c=s.substr(i,2);
+    if(FIXED[c]){i+=2;ai[c]=s.substr(i,FIXED[c]);i+=FIXED[c]}
+    else if(VAR.includes(c)){i+=2;let e=s.indexOf(GS,i);if(e<0)e=s.length;ai[c]=s.slice(i,e).slice(0,20);i=e}
+    else return Object.keys(ai).length?ai:null;
+  }
+  return ai['01']?ai:null;
+}
+function decode(inp){
+  const s=(inp||'').replace(/[\r\n]+$/,'').trim();if(!s)return null;
+  if(/^\d{8,14}$/.test(s))return{onlyGtin:s.padStart(14,'0')};
+  const ai=parseAI(s);if(!ai||!ai['01'])return null;
+  return{gtin:ai['01'].padStart(14,'0'),lote:ai['10']||'',serie:ai['21']||'',venc:ai['17']?gs1Date(ai['17']):''};
+}
+const gtinMap=g=>{const id=S.gtinmap[g];if(id)return ins(id);return MAESTRO.find(x=>x.gtin===g)||null};
+const gtinReal=i=>i.gtin||i.gtinReal;
+function genCode(i,o){let s='01'+gtinReal(i)+'17'+o.venc.replace(/-/g,'').slice(2)+'10'+o.lote;if(i.serie)s+=GS+'21'+o.serie;return s}
+function newSerie(){let s;do{s='N'+(40000+Math.floor(Math.random()*59999))}while(S.items.some(x=>x.serieNo===s));return s}
+
+/* ---------- Cálculos ---------- */
+const stockItems=()=>S.items.filter(x=>x.estado==='stock');
+const movsPer=()=>S.movs.filter(m=>m.per===S.per);
+const sum=(a,f)=>a.reduce((t,x)=>t+f(x),0);
+const teoricoUn=i=>sum(movsPer().filter(m=>m.ins===i),m=>m.cant);
+const stockUn=i=>sum(stockItems().filter(x=>x.ins===i),x=>x.cant);
+const facEstado=f=>{const c=sum(f.lineas,l=>l.cant),r=sum(f.lineas,l=>l.rec);return r>=c?'completa':r>0?'parcial':'pendiente'};
+const facTotal=f=>sum(f.lineas,l=>l.cant*l.cu);
+const facPendVal=f=>sum(f.lineas,l=>Math.max(0,l.cant-l.rec)*l.cu);
+const pctRec=f=>{const c=sum(f.lineas,l=>l.cant);return c?Math.min(100,Math.round(100*sum(f.lineas,l=>Math.min(l.rec,l.cant))/c)):0};
+const costoCir=c=>sum(c.units,id=>S.items.find(x=>x.id===id).cu);
+const TIPOS={SI:'Saldo inicial',COMPRA:'Compra recibida',CONSUMO:'Consumo en cirugía',CONSDIF:'Consumo por diferencia',AJUSTE:'Ajuste de inventario'};
+const admin=()=>S.role==='admin';
+
+/* ---------- Utilidades de UI ---------- */
+let tt;function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('on'),2400)}
+function say(kind,html){S.msg={kind,html}}
+const msgHTML=()=>S.msg?'<div class="msg '+S.msg.kind+'" role="alert">'+S.msg.html+'</div>':'';
+function logEv(kind,text){S.log.unshift({t:new Date().toTimeString().slice(0,5),kind,text});S.log=S.log.slice(0,8)}
+const avisoVenc=v=>{if(!v)return'<span class="note">Sin vencimiento</span>';const d=dias(v);return d<0?pill('bad','Vencido hace '+(-d)+' días'):d<=30?pill('bad','Vence en '+d+' días'):d<=90?pill('warn','Vence en '+d+' días'):pill('ok','Vigente · '+d+' días')};
+const nextVenc=id=>stockItems().filter(x=>x.ins===id&&x.venc).map(x=>x.venc).sort()[0]||'';
+const pill=(c,t)=>'<span class="pill '+c+'">'+t+'</span>';
+const vencPill=v=>{if(!v)return'';const d=dias(v);return d<0?pill('bad','Vencido'):d<=30?pill('bad','Vence en '+d+' d'):d<=90?pill('warn','Vence en '+d+' d'):'<span class="note">'+ar(v)+'</span>'};
+const TABS=[['resumen','Resumen',0],['existencias','Existencias',0],['recepcion','Recepción',1],['quirofano','Quirófano',2],['inventario','Para hacer inventario',3]];
+const tabsVisibles=()=>(admin()?['resumen','recepcion','inventario','existencias']:['quirofano','inventario','existencias']).map(k=>TABS.find(t=>t[0]===k));
+
+/* ============================================================ VISTAS ============================================================ */
+const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const norm=x=>String(x==null?'':x).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const incl=m=>!(m.tipo==='SI'&&m.per>1);
+const PER=10;
+function bridge(id,d1,d2){
+  const r={si:0,co:0,cn:0,aj:0,vsi:0,vco:0,vcn:0,vaj:0};
+  const add=(k,m,sg)=>{r[k]+=sg*m.cant;r['v'+k]+=sg*m.cant*m.cu};
+  const cls=m=>{if(m.tipo==='SI')add('si',m,1);else if(m.tipo==='COMPRA')add('co',m,1);else if(m.tipo==='AJUSTE')add('aj',m,1);else add('cn',m,-1)};
+  if(!d1&&!d2)movsPer().filter(m=>m.ins===id).forEach(cls);
+  else{const a=d1||'0000-00-00',b=d2||'9999-99-99';S.movs.filter(m=>m.ins===id&&incl(m)).forEach(m=>{if(m.f<a)add('si',m,1);else if(m.f<=b)cls(m)})}
+  r.te=r.si+r.co-r.cn+r.aj;r.vte=r.vsi+r.vco-r.vcn+r.vaj;return r;
+}
+function pager(key,total,lbl){
+  S.pg[key]=S.pg[key]||1;
+  const pages=Math.max(1,Math.ceil(total/PER));if(S.pg[key]>pages)S.pg[key]=pages;if(S.pg[key]<1)S.pg[key]=1;
+  const cur=S.pg[key],a=total?(cur-1)*PER+1:0,b=Math.min(total,cur*PER);
+  let nums='';for(let k=1;k<=pages;k++)nums+='<button class="btn sm" data-act="pg" data-k="'+key+'" data-v="'+k+'" aria-pressed="'+(k===cur)+'" aria-label="Página '+k+'">'+k+'</button>';
+  return '<div class="pager"><span class="note">Mostrando '+a+'–'+b+' de '+total+' '+(lbl||'insumos')+'</span><div class="row"><button class="btn sm" data-act="pg" data-k="'+key+'" data-v="'+(cur-1)+'" '+(cur<=1?'disabled':'')+'>‹ Anterior</button>'+nums+'<button class="btn sm" data-act="pg" data-k="'+key+'" data-v="'+(cur+1)+'" '+(cur>=pages?'disabled':'')+'>Siguiente ›</button></div></div>';
+}
+const compact=v=>v>=1e6?'$ '+(v/1e6).toFixed(1).replace('.',',')+' M':v>=1e3?'$ '+Math.round(v/1e3)+' mil':'$ '+Math.round(v);
+function vencBuckets(){
+  const base=new Date();base.setDate(1);const bs=[];
+  for(let m=0;m<6;m++){const d=new Date(base.getFullYear(),base.getMonth()+m,1);bs.push({k:'mes:'+d.getFullYear()+'-'+pad(d.getMonth()+1),l:MESES[d.getMonth()]+' '+String(d.getFullYear()).slice(2),u:0,v:0,min:9999})}
+  const ven={k:'vencido',l:'Vencido',u:0,v:0,min:-1};let mas={u:0,v:0};
+  stockItems().filter(x=>x.venc).forEach(x=>{const val=x.cant*x.cu,d=dias(x.venc);
+    if(d<0){ven.u+=x.cant;ven.v+=val;return}
+    const b=bs.find(b=>b.k==='mes:'+x.venc.slice(0,7));if(b){b.u+=x.cant;b.v+=val;b.min=Math.min(b.min,d)}else{mas.u+=x.cant;mas.v+=val}});
+  return{bs:ven.u?[ven].concat(bs):bs,mas};
+}
+const SF_LBL={si:'Con saldo inicial',compras:'Con compras en el período',consumos:'Con consumos en el período',ajustes:'Con ajustes',te:'Con stock teórico',valor:'Con stock, de mayor a menor valor',venc:'Vence en 90 días o menos',vencido:'Vencido'};
+function vResumen(){
+  const d1='',d2='',mp=movsPer();
+  const data=MAESTRO.map(i=>Object.assign({i},bridge(i.id,d1,d2)));
+  const tot=k=>sum(data,r=>r['v'+k]);
+  const si=tot('si'),co=tot('co'),cn=tot('cn'),aj=tot('aj'),te=tot('te');
+  const vp=sum(stockItems().filter(x=>x.venc&&dias(x.venc)<=90),x=>x.cant*x.cu);
+  const nPv=MAESTRO.filter(i=>stockItems().some(x=>x.ins===i.id&&x.venc&&dias(x.venc)<=90)).length;
+  const sf=S.sf,isMes=sf&&sf.startsWith('mes:');
+  const modeV=sf==='venc'||sf==='vencido'||isMes;
+  const pvItems=i=>{const it=stockItems().filter(x=>x.ins===i.id&&x.venc);
+    if(sf==='venc')return it.filter(x=>dias(x.venc)<=90);if(sf==='vencido')return it.filter(x=>dias(x.venc)<0);if(isMes)return it.filter(x=>x.venc.slice(0,7)===sf.slice(4));return[]};
+  const keep=r=>{if(!sf)return true;if(sf==='si')return r.si!==0;if(sf==='compras')return r.co!==0;if(sf==='consumos')return r.cn!==0;if(sf==='ajustes')return r.aj!==0;if(sf==='te')return r.te>0;if(sf==='valor')return r.vte>0;return pvItems(r.i).length>0};
+  const q=norm(S.qs);
+  let list=data.filter(r=>keep(r)&&(!q||norm(r.i.desc).includes(q)));
+  if(sf==='valor')list.sort((a,b)=>b.vte-a.vte);
+  const total=list.length;pager('stock',total);
+  const cur=S.pg.stock,page=list.slice((cur-1)*PER,cur*PER);
+  const sfLabel=!sf?'':isMes?'Vence en '+(()=>{const m=sf.slice(9,11);return MESES[+m-1]+' '+sf.slice(6,8)})():SF_LBL[sf];
+  const rows=page.map(r=>{const pv=pvItems(r.i),nv=pv.map(x=>x.venc).sort()[0];
+    return '<tr><td>'+esc(r.i.desc)+'</td><td>'+(r.i.serie?pill('acc','Serie'):pill('','Cantidad'))+'</td><td class="n">'+r.si+'</td><td class="n">'+r.co+'</td><td class="n">'+(r.cn?'−'+r.cn:'0')+'</td><td class="n">'+(r.aj>0?'+':'')+r.aj+'</td><td class="n"><b>'+r.te+'</b></td><td class="n">'+money(r.vte)+'</td>'+(modeV?'<td class="n">'+sum(pv,x=>x.cant)+'</td><td class="n">'+money(sum(pv,x=>x.cant*x.cu))+'</td><td>'+avisoVenc(nv)+' <span class="note">'+ar(nv)+'</span></td>':'')+'</tr>'}).join('');
+  const kb=(k,lbl,body,extra)=>'<button class="b'+(extra||'')+'" data-act="sf" data-v="'+k+'" aria-pressed="'+(sf===k)+'"><span class="lbl">'+lbl+'</span><b>'+body+'</b></button>';
+  const per=d1||d2?'Período del '+(d1?ar(d1):'inicio')+' al '+(d2?ar(d2):'hoy'):'Período actual (desde el último inventario)';
+  const movAll=S.movs.filter(m=>(!d1&&!d2)?m.per===S.per:((!d1||m.f>=d1)&&(!d2||m.f<=d2))).sort((a,b)=>a.f<b.f?1:a.f>b.f?-1:b.id-a.id);
+  pager('mov',movAll.length,'movimientos');
+  const movRows=movAll.slice((S.pg.mov-1)*PER,S.pg.mov*PER).map(m=>'<tr><td>'+ar(m.f)+'</td><td>'+pill(m.tipo==='COMPRA'?'ok':m.tipo==='AJUSTE'?'bad':m.tipo==='SI'?'':'acc',TIPOS[m.tipo])+'</td><td>'+esc(ins(m.ins).desc)+'</td><td class="n">'+(m.cant>0?'+':'')+m.cant+'</td><td class="n">'+money(m.cant*m.cu)+'</td><td class="note">'+esc(m.ref)+'</td></tr>').join('');
+  const cb=vencBuckets(),vals=cb.bs.map(b=>S.chM==='u'?b.u:b.v),mx=Math.max(1,...vals);
+  const bars=cb.bs.map((b,k)=>{const v=vals[k],h=v?Math.max(4,Math.round(150*v/mx)):0,col=b.min<=30?'var(--bad)':b.min<=90?'var(--warn)':'var(--acc)';
+    return '<button class="cbar" data-act="barra" data-k="'+b.k+'" '+(v?'':'disabled')+' aria-pressed="'+(sf===b.k)+'" aria-label="'+b.l+': '+b.u+' unidades, '+money(b.v)+'"><span class="v">'+(v?(S.chM==='u'?b.u:compact(b.v)):'')+'</span><span class="cb" style="height:'+h+'px;background:'+col+'"></span></button>'}).join('');
+  const lbls=cb.bs.map(b=>'<span>'+b.l+'</span>').join('');
+  return '<section class="card"><h2>Stock</h2><p class="sub">Saldo inicial + compras − consumos ± ajustes = stock teórico. Foto de hoy, desde el último inventario. Valores a costo de compra. Tocá cualquier recuadro para filtrar la tabla de abajo.</p>'+
+   '<div class="eq">'+kb('si','Saldo inicial',money(si))+'<span class="op">+</span>'+kb('compras','Compras',money(co))+'<span class="op">−</span>'+kb('consumos','Consumos',money(cn))+'<span class="op">±</span>'+kb('ajustes','Ajustes',money(aj))+'<span class="op">=</span>'+kb('te','Stock teórico',money(te),' res')+'</div>'+
+   '<p class="note" style="margin:10px 0 0">Los insumos con serie se descuentan al escanearlos en quirófano. Los que se manejan por cantidad (gasas, jeringas, suturas) se descuentan al inventariar, por diferencia entre lo teórico y lo contado.</p></section>'+
+   '<div class="kpis"><button class="kpi kbtn" data-act="sf" data-v="valor" aria-pressed="'+(sf==='valor')+'"><span class="lbl">Stock valorizado</span><b>'+money(sum(stockItems(),x=>x.cant*x.cu))+'</b><small>stock actual · '+(sf==='valor'?'filtrando, tocá para quitar':'tocá para ordenar por valor')+'</small></button>'+
+   '<button class="kpi kbtn" data-act="sf" data-v="venc" aria-pressed="'+(sf==='venc')+'"><span class="lbl">Por vencer en los próximos 90 días</span><b>'+money(vp)+'</b><small>'+nPv+' insumo(s) · '+(sf==='venc'?'filtrando, tocá para quitar':'tocá para ver cuáles son')+'</small></button></div>'+
+   '<section class="card" id="stk"><h2>Stock por insumo</h2><p class="sub">Unidades del período. Teórico = saldo inicial + compras − consumos ± ajustes.</p>'+
+   '<div class="fbar"><label class="f grow"><span class="lbl">Buscar insumo</span><input id="qs" type="search" placeholder="Ej: lente, sutura, gasa…" value="'+esc(S.qs)+'" autocomplete="off"></label>'+(sf?'<div class="row" style="align-self:center">'+pill('warn','Filtro: '+sfLabel)+'<button class="btn sm" data-act="sf" data-v="'+sf+'">Quitar filtro</button></div>':'')+'</div>'+
+   '<div class="tw"><table><thead><tr><th>Insumo</th><th>Control</th><th class="n">Saldo inicial</th><th class="n">Compras</th><th class="n">Consumos</th><th class="n">Ajustes</th><th class="n">Teórico</th><th class="n">Valor</th>'+(modeV?'<th class="n">Por vencer (u.)</th><th class="n">Valor por vencer</th><th>Próximo vencimiento</th>':'')+'</tr></thead><tbody>'+(rows||'<tr><td colspan="11" class="empty">No hay insumos con ese criterio.</td></tr>')+'</tbody></table></div>'+pager('stock',total)+'</section>'+
+   '<section class="card"><h2>Vencimientos de los próximos 6 meses</h2><p class="sub">Stock actual según su fecha de vencimiento. Tocá una barra para ver esos insumos en la tabla de arriba.</p>'+
+   '<div class="row" style="margin-bottom:10px"><button class="btn sm" data-act="chm" data-v="valor" aria-pressed="'+(S.chM!=='u')+'">Valor</button><button class="btn sm" data-act="chm" data-v="u" aria-pressed="'+(S.chM==='u')+'">Unidades</button></div>'+
+   '<div class="chart" role="group" aria-label="Vencimientos por mes">'+bars+'</div><div class="clabels">'+lbls+'</div>'+
+   '<p class="note" style="margin:10px 0 0">'+(cb.mas.u?'Más allá de 6 meses: '+cb.mas.u+' unidades · '+money(cb.mas.v)+'. ':'')+'Rojo: vence en 30 días o menos · Amarillo: hasta 90 días.</p></section>'+
+   '<section class="card"><h2>Movimientos del período</h2><p class="sub">Saldo inicial, compras recibidas y consumos en cirugía, del más reciente al más antiguo.</p><div class="tw"><table><thead><tr><th>Fecha</th><th>Estado</th><th>Insumo</th><th class="n">Cant.</th><th class="n">Valor</th><th>Referencia</th></tr></thead><tbody>'+(movRows||'<tr><td colspan="6" class="empty">Todavía no hay movimientos en este período.</td></tr>')+'</tbody></table></div>'+pager('mov',movAll.length,'movimientos')+'</section>';
+}
+
+const diaLbl=f=>{const d=dias(f);return d===0?'Hoy':d===1?'Mañana':ar(f)};
+function pendFacs(){return S.facturas.filter(f=>facEstado(f)!=='completa')}
+function vRecepcion(){
+  const pf=pendFacs();
+  if(!pf.length)return '<section class="card"><h2>Recepción de mercadería</h2><div class="empty">No hay facturas pendientes de recibir.'+''+'</div></section>';
+  if(!pf.find(f=>f.id===S.recSel))S.recSel=pf[0].id;
+  const f=pf.find(x=>x.id===S.recSel);
+  const cards=pf.map(x=>'<button class="fac '+(x.id===f.id?'sel':'')+'" data-act="selFac" data-id="'+x.id+'" style="text-align:left;cursor:pointer"><b>'+esc(x.prov)+'</b><span class="note">Factura '+esc(x.nro)+'</span><div class="bar"><i style="width:'+pctRec(x)+'%"></i></div><span class="note">'+pctRec(x)+'% recibido</span></button>').join('');
+  const rows=f.lineas.map(l=>{const m=ins(l.ins),p=Math.max(0,l.cant-l.rec);
+    return '<tr><td>'+esc(m.desc)+'</td><td>'+(m.serie?pill('acc','Serie'):pill('','Cantidad'))+'</td><td class="n">'+l.cant+'</td><td class="n">'+l.rec+'</td><td class="n"><b>'+p+'</b></td>'+(admin()?'<td class="n">'+money(l.cu)+'</td>':'')+'<td>'+(p?'<button class="btn sm" data-act="simRec" data-l="'+l.id+'">Simular lectura</button>':pill('ok','Completo'))+'</td></tr>'}).join('');
+  let pend='';
+  if(S.pend){const m=ins(S.pend.ins),l=f.lineas.find(x=>x.id===S.pend.l),mx=l.cant-l.rec;
+    pend='<div class="msg ok"><b>'+esc(m.desc)+'</b> · producto por cantidad (sin serie).<div class="grid" style="margin-top:8px"><label class="f"><span class="lbl">Lote</span><input id="p-lote" value="'+esc(S.pend.lote)+'"></label><label class="f"><span class="lbl">Vencimiento</span><input id="p-venc" type="date" value="'+esc(S.pend.venc)+'"></label><label class="f"><span class="lbl">Cantidad recibida (pendiente '+mx+')</span><input id="p-cant" inputmode="numeric" value="'+S.pend.cant+'"></label></div><div class="row" style="margin-top:10px"><button class="btn pri" data-act="okPend">Confirmar recepción</button><button class="btn" data-act="noPend">Cancelar</button></div></div>'}
+  if(S.learn){const c=S.learn.cands;pend='<div class="msg warn"><b>Código nuevo.</b> Es la primera vez que se lee este producto. ¿A qué renglón de la factura corresponde? El sistema lo recuerda y la próxima vez lo reconoce solo.<div class="row" style="margin-top:8px"><select id="l-sel" aria-label="Renglón">'+c.map(id=>{const l=f.lineas.find(x=>x.id===id);return '<option value="'+id+'">'+esc(ins(l.ins).desc)+'</option>'}).join('')+'</select><button class="btn pri" data-act="okLearn">Vincular y registrar</button><button class="btn" data-act="noLearn">Cancelar</button></div></div>'}
+  const log=S.log.filter(x=>x.tab==null||x.tab==='rec').length?'':'';
+  return '<section class="card"><h2>Recepción de mercadería con lector</h2><p class="sub">Elegí la factura y escaneá cada caja. Lo recibido da el alta con serie, lote y vencimiento. El stock se calcula con lo recibido, no con lo facturado.</p><div class="facs">'+cards+'</div></section>'+
+   '<section class="card"><h2>Escanear</h2><div class="scan"><input id="scan" autocomplete="off" spellcheck="false" placeholder="Disparale al código de la caja…" aria-label="Lector de códigos"></div>'+msgHTML()+pend+
+   '<div class="tw" style="margin-top:12px"><table><thead><tr><th>Insumo</th><th>Control</th><th class="n">Facturado</th><th class="n">Recibido</th><th class="n">Pendiente</th>'+(admin()?'<th class="n">Costo unit.</th>':'')+'<th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+   '<div class="row" style="margin-top:12px"><span class="note">Simular una lectura con error:</span><button class="btn sm" data-act="simErr" data-k="venc">Unidad vencida</button><button class="btn sm" data-act="simErr" data-k="dup">Serie repetida</button><button class="btn sm" data-act="simErr" data-k="otra">Producto que no es de esta factura</button><button class="btn sm" data-act="simErr" data-k="exceso">Más de lo facturado</button></div></section>'+
+   '<section class="card"><h2>Últimas lecturas</h2>'+(S.log.length?'<ul class="log">'+S.log.map(e=>'<li><time>'+e.t+'</time>'+pill(e.kind,e.kind==='ok'?'OK':e.kind==='bad'?'Rechazada':'Aviso')+'<span>'+e.text+'</span></li>').join('')+'</ul>':'<div class="empty">Todavía no hay lecturas.</div>')+'</section>';
+}
+
+function vQuirofano(){
+  const ps=PACIENTES.map(p=>'<option value="'+p[0]+'">'+esc(p[1])+'</option>').join('');
+  const fCab=S.cab.f||HOY, progDia=S.prog.filter(p=>p.estado==='programada'&&p.f===fCab).sort((a,b)=>a.h<b.h?-1:1);
+  const opt=(a,v)=>a.map(x=>'<option '+(v===x?'selected':'')+'>'+esc(x)+'</option>').join('');
+  const cart=S.cart.map(id=>S.items.find(x=>x.id===id));
+  const rows=cart.map(u=>'<tr><td>'+esc(ins(u.ins).desc)+'</td><td class="m">'+esc(u.serieNo)+'</td><td class="m">'+esc(u.lote)+'</td><td>'+vencPill(u.venc)+'</td>'+(admin()?'<td class="n">'+money(u.cu)+'</td>':'')+'<td><button class="btn sm" data-act="quitar" data-id="'+u.id+'">Quitar</button></td></tr>').join('');
+  const disp=stockItems().filter(x=>ins(x.ins).serie).sort((a,b)=>a.ins<b.ins?-1:1).map(u=>'<tr><td>'+esc(ins(u.ins).desc)+'</td><td class="m">'+esc(u.serieNo)+'</td><td class="m">'+esc(u.lote)+'</td><td>'+vencPill(u.venc)+'</td><td><button class="btn sm" data-act="simCir" data-id="'+u.id+'" '+(S.cart.includes(u.id)?'disabled':'')+'>Simular lectura</button></td></tr>').join('');
+  const ready=cart.length&&S.cab.pac&&S.cab.proc&&S.cab.cir;
+  return '<section class="card"><h2>Consumo en quirófano</h2><p class="sub">Se elige la fecha, se carga el paciente (por historia clínica), el procedimiento y el cirujano, y se escanean los insumos usados.</p>'+
+   '<div class="grid"><label class="f"><span class="lbl">Fecha</span><input type="date" id="c-fecha" value="'+fCab+'"></label>'+(progDia.length?'<label class="f"><span class="lbl">Cirugía programada ese día</span><select id="c-prog"><option value="">(otra)</option>'+progDia.map(p=>'<option value="'+p.id+'" '+(S.cab.prog===p.id?'selected':'')+'>'+p.h+' · '+p.hc+' · '+esc(p.proc)+'</option>').join('')+'</select></label>':'')+'<label class="f"><span class="lbl">Paciente (historia clínica)</span><input id="c-pac" list="pacs" autocomplete="off" placeholder="Ej: HC-0004" value="'+esc(S.cab.pac||'')+'"><datalist id="pacs">'+ps+'</datalist></label><label class="f"><span class="lbl">Procedimiento</span><select id="c-proc"><option value="">Elegí…</option>'+opt(PROCS,S.cab.proc)+'</select></label><label class="f"><span class="lbl">Cirujano</span><select id="c-cir"><option value="">Elegí…</option>'+opt(CIRS,S.cab.cir)+'</select></label></div></section>'+
+   '<section class="card"><h2>Escanear insumos usados</h2><div class="scan"><input id="scan" autocomplete="off" spellcheck="false" placeholder="Disparale a cada insumo que se usó…" aria-label="Lector de códigos"></div>'+msgHTML()+
+   '<div class="tw" style="margin-top:12px"><table><thead><tr><th>Insumo</th><th>Serie</th><th>Lote</th><th>Vencimiento</th>'+(admin()?'<th class="n">Costo</th>':'')+'<th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" class="empty">Escaneá los insumos de esta cirugía.</td></tr>')+'</tbody></table></div>'+
+   '<div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn" data-act="descartar" '+(cart.length?'':'disabled')+'>Descartar</button><button class="btn pri" data-act="regCir" '+(ready?'':'disabled')+'>Registrar consumo</button></div>'+
+   '<div class="row" style="margin-top:10px"><span class="note">Simular una lectura con error:</span><button class="btn sm" data-act="simCirErr" data-k="consumida">Serie ya consumida</button><button class="btn sm" data-act="simCirErr" data-k="nunca">Nunca dada de alta</button><button class="btn sm" data-act="simCirErr" data-k="cantidad">Insumo por cantidad</button></div></section>'+
+   '<section class="card"><details open><summary>Unidades con serie disponibles para simular ('+stockItems().filter(x=>ins(x.ins).serie).length+')</summary><div class="tw" style="margin-top:10px"><table><thead><tr><th>Insumo</th><th>Serie</th><th>Lote</th><th>Vencimiento</th><th></th></tr></thead><tbody>'+disp+'</tbody></table></div></details></section>';
+}
+
+function vExistencias(){
+  const ex=stockItems().slice().sort((a,b)=>(a.venc||'9999')<(b.venc||'9999')?-1:(a.venc||'9999')>(b.venc||'9999')?1:0).filter(x=>(!S.exSolo||(x.venc&&dias(x.venc)<=90))&&(!S.exQ||norm(ins(x.ins).desc+' '+(x.lote||'')+' '+(x.serieNo||'')).includes(norm(S.exQ))));
+  pager('ex',ex.length,'existencias');
+  const exRows=ex.slice((S.pg.ex-1)*PER,S.pg.ex*PER).map(x=>'<tr><td>'+esc(ins(x.ins).desc)+'</td><td class="m">'+(x.serieNo?esc(x.serieNo):'—')+'</td><td class="m">'+esc(x.lote||'—')+'</td><td class="n">'+x.cant+'</td><td>'+(x.venc?ar(x.venc):'—')+'</td><td>'+avisoVenc(x.venc)+'</td>'+(admin()?'<td class="n">'+money(x.cant*x.cu)+'</td>':'')+'</tr>').join('');
+  return '<section class="card"><h2>Existencias</h2><p class="sub">Todo lo que hay en stock con su vencimiento, lote y serie, ordenado por vencimiento. El aviso es estándar: rojo a 30 días o menos, amarillo a 90 días o menos.</p><div class="fbar"><label class="f grow"><span class="lbl">Buscar insumo</span><input id="exq" type="search" placeholder="Ej: lente, sutura, lote o serie…" value="'+esc(S.exQ||'')+'" autocomplete="off"></label></div><label class="chk" style="margin-bottom:10px"><input type="checkbox" id="ex-solo" '+(S.exSolo?'checked':'')+'> Mostrar solo lo que vence en 90 días o menos</label><div class="tw"><table><thead><tr><th>Insumo</th><th>Serie</th><th>Lote</th><th class="n">Cantidad</th><th>Vencimiento</th><th>Aviso</th>'+(admin()?'<th class="n">Valor</th>':'')+'</tr></thead><tbody>'+(exRows||'<tr><td colspan="7" class="empty">No hay existencias con ese criterio.</td></tr>')+'</tbody></table></div>'+pager('ex',ex.length,'existencias')+'</section>';
+}
+function seenOf(i){return S.items.filter(x=>x.ins===i&&S.inv.seen.includes(x.id)).length}
+function invCalc(){
+  let cons=0,sob=0,falt=0,faltN=0;
+  MAESTRO.forEach(i=>{
+    if(i.serie){if(!S.inv.serieDone&&!S.inv.seen.length)return;const t=stockItems().filter(x=>x.ins===i.id);const miss=t.filter(x=>!S.inv.seen.includes(x.id));faltN+=miss.length;falt+=sum(miss,x=>x.cu)}
+    else{const c0=num(S.inv.cont[i.id]),c=c0==null?(S.inv.serieDone?0:null):c0;if(c==null)return;const d=c-stockUn(i.id),cu=i.cu;if(d<0)cons+=-d*cu;else sob+=d*cu}});
+  return{cons,sob,falt,faltN};
+}
+function invOk(){return !!S.inv.serieDone}
+function invCells(i){
+  const t=stockUn(i.id);let c,d,txt;
+  if(i.serie){c=seenOf(i.id);d=c-t;txt=!S.inv.serieDone&&!S.inv.seen.length?'<span class="note">Escaneá las unidades</span>':d<0?pill('bad','Faltan '+(-d)+' unidad(es)'):pill('ok','Sin diferencia')}
+  else{c=num(S.inv.cont[i.id]);if(c==null&&S.inv.serieDone)c=0;if(c==null){d=null;txt='<span class="note">Escaneá las unidades</span>'}else{d=c-t;txt=d<0?pill('acc','Consumo por diferencia: '+(-d)):d>0?pill('warn','Sobrante: '+d):pill('ok','Sin consumo')}}
+  return{t,c,d,txt};
+}
+function vInventario(){
+  const rows=MAESTRO.map(i=>{const k=invCells(i);
+    return '<tr id="ir-'+i.id+'"><td>'+esc(i.desc)+'</td><td>'+(i.serie?pill('acc','Serie'):pill('','Cantidad'))+'</td><td class="n">'+k.t+'</td><td class="n">'+'<span id="ic-'+i.id+'">'+(k.c==null?0:k.c)+'</span>'+'</td><td class="n" id="id-'+i.id+'">'+(k.d==null?'—':k.d)+'</td><td id="it-'+i.id+'">'+k.txt+'</td><td>'+(nextVenc(i.id)?avisoVenc(nextVenc(i.id))+' <span class="note">'+ar(nextVenc(i.id))+'</span>':'<span class="note">—</span>')+'</td></tr>'}).join('');
+  const last=S.invs[S.invs.length-1];
+  const tot=invCalc();
+  return '<section class="card"><h2>Para hacer inventario</h2><p class="sub">Se cuenta lo que hay escaneando cada insumo: todos tienen código de barras o QR. La diferencia contra el stock teórico es el consumo (insumos por cantidad) o el faltante (insumos con serie). Al cerrar, el conteo pasa a ser el nuevo saldo inicial.</p>'+
+   '<div class="scan"><input id="scan" autocomplete="off" spellcheck="false" placeholder="Escaneá cada insumo que hay en el depósito o quirófano…" aria-label="Lector de códigos"></div>'+msgHTML()+
+   '<div class="row" style="margin:10px 0"><button class="btn sm" data-act="simInv">Simular recuento completo</button><button class="btn sm" data-act="resetInv">Reiniciar conteo</button><label class="chk"><input type="checkbox" id="serieDone" '+(S.inv.serieDone?'checked':'')+'> Terminé de escanear todo</label></div>'+
+   '<div class="tw"><table><thead><tr><th>Insumo</th><th>Control</th><th class="n">Teórico</th><th class="n">Contado</th><th class="n">Diferencia</th><th>Resultado</th><th>Próximo vencimiento</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+   '<div class="row" style="margin-top:12px;justify-content:space-between"><span id="invTot" class="note">'+invTotTxt(tot)+'</span><button class="btn pri" id="cerrar" data-act="cerrarInv" '+(invOk()?'':'disabled')+'>Cerrar inventario y ajustar stock</button></div></section>'+
+   '<section class="card"><details><summary>Simular lecturas (para la demo sin pistola)</summary><div class="tw" style="margin-top:10px"><table><thead><tr><th>Insumo</th><th>Control</th><th></th></tr></thead><tbody>'+MAESTRO.map(i=>'<tr><td>'+esc(i.desc)+'</td><td>'+(i.serie?pill('acc','Serie'):pill('','Cantidad'))+'</td><td><button class="btn sm" data-act="simInvIns" data-id="'+i.id+'" data-n="1">Simular lectura</button>'+(i.serie?'':' <button class="btn sm" data-act="simInvIns" data-id="'+i.id+'" data-n="10">Simular 10 lecturas</button>')+'</td></tr>').join('')+'</tbody></table></div></details></section>'+
+   (last&&admin()?'<section class="card"><h2>Último inventario cerrado · '+ar(last.f)+'</h2><div class="kpis"><div class="kpi"><span class="lbl">Consumo por diferencia</span><b>'+money(last.consDif)+'</b><small>insumos por cantidad</small></div><div class="kpi"><span class="lbl">Faltantes con serie</span><b>'+money(last.falt)+'</b><small>'+last.faltN+' unidad(es)</small></div><div class="kpi"><span class="lbl">Sobrantes</span><b>'+money(last.sob)+'</b><small>a revisar</small></div></div></section>':'');
+}
+function invTotTxt(t){return admin()?('Consumo por diferencia: <b>'+money(t.cons)+'</b> · Faltantes con serie: <b>'+money(t.falt)+'</b> · Sobrantes: <b>'+money(t.sob)+'</b>'):'Conteo en curso'}
+
+/* ============================================================ RENDER ============================================================ */
+function render(){
+  if(!tabsVisibles().some(t=>t[0]===S.tab))S.tab=tabsVisibles()[0][0];
+  $('#r-admin').setAttribute('aria-pressed',admin());$('#r-quir').setAttribute('aria-pressed',!admin());
+  $('#nav').innerHTML=tabsVisibles().map(t=>'<button role="tab" data-act="tab" data-t="'+t[0]+'" aria-selected="'+(S.tab===t[0])+'">'+t[1]+'</button>').join('');
+  const v={resumen:vResumen,existencias:vExistencias,recepcion:vRecepcion,quirofano:vQuirofano,inventario:vInventario}[S.tab];
+  $('#main').innerHTML=v();
+  save();
+  const sc=$('#scan');if(sc){sc.focus({preventScroll:true})}
+}
+function go(t){S.tab=t;S.msg=null;S.pend=null;S.learn=null;render();window.scrollTo(0,0)}
+
+/* ============================================================ ACCIONES ============================================================ */
+function recProcess(r,f){
+  if(r.onlyGtin&&!r.gtin){r.gtin=r.onlyGtin;r.lote='';r.serie='';r.venc='';r.solo=true}
+  const m=gtinMap(r.gtin);
+  if(!m){const c=f.lineas.filter(l=>!ins(l.ins).gtin&&!Object.values(S.gtinmap).includes(l.ins)&&l.rec<l.cant).map(l=>l.id);
+    if(c.length){S.learn={r,cands:c};S.msg=null;logEv('warn','GTIN '+r.gtin+' nuevo: se pide vincularlo');return}
+    say('bad','<b>No figura en esta factura.</b> El GTIN '+r.gtin+' no corresponde a ningún insumo pendiente.');logEv('bad','GTIN '+r.gtin+' no figura en la factura');return}
+  const l=f.lineas.find(x=>x.ins===m.id);
+  if(!l){say('bad','<b>No figura en esta factura:</b> '+esc(m.desc)+'. Verificá que la caja corresponda a la factura elegida.');logEv('bad',esc(m.desc)+' · no es de esta factura');return}
+  if(l.rec>=l.cant){say('bad','<b>Ya se recibió todo lo facturado</b> de '+esc(m.desc)+' ('+l.cant+'). Si llegó de más hace falta una nota de crédito o un ajuste.');logEv('bad',esc(m.desc)+' · supera lo facturado');return}
+  if(r.venc&&dias(r.venc)<0){say('bad','<b>Vencido:</b> '+esc(m.desc)+' venció el '+ar(r.venc)+'. No se da de alta; hay que reclamarlo al proveedor.');logEv('bad',esc(m.desc)+' · vencido');return}
+  if(m.serie){
+    if(!r.serie){say('bad','<b>El código no trae número de serie.</b> Este insumo se controla por serie.');logEv('bad',esc(m.desc)+' · sin serie');return}
+    const d=S.items.find(x=>x.ins===m.id&&x.serieNo===r.serie);
+    if(d){say('bad','<b>Serie repetida:</b> '+esc(r.serie)+' ya fue dada de alta ('+ar(d.fIng)+').');logEv('bad',esc(m.desc)+' · serie '+esc(r.serie)+' repetida');return}
+    addItem(m.id,{tipo:'COMPRA',f:HOY,cu:l.cu,lote:r.lote,venc:r.venc,serieNo:r.serie,fac:f.id,ref:'Fac. '+f.nro});l.rec++;
+    say('ok','<b>Alta registrada:</b> '+esc(m.desc)+' · serie '+esc(r.serie)+' · lote '+esc(r.lote)+' · vence '+ar(r.venc)+(r.venc&&dias(r.venc)<=90?' <b>(vencimiento cercano)</b>':''));
+    logEv('ok',esc(m.desc)+' · serie '+esc(r.serie));
+    if(facEstado(f)==='completa')toast('Factura '+f.nro+' recibida completa');
+  }else{
+    S.pend={ins:m.id,l:l.id,lote:r.lote,venc:r.venc,cant:l.cant-l.rec};
+    S.msg=null;
+  }
+}
+function onScan(val){
+  const r=decode(val);
+  if(!r){say('bad','<b>No se pudo interpretar el código.</b> Probá de nuevo o cargá los datos a mano.');if(S.tab==='recepcion')logEv('bad','Código no reconocido');render();return}
+  if(S.tab==='recepcion'){const f=S.facturas.find(x=>x.id===S.recSel);S.pend=null;S.learn=null;S.msg=null;recProcess(r,f)}
+  else if(S.tab==='quirofano')cirProcess(r);
+  else if(S.tab==='inventario')invProcess(r);
+  render();
+}
+function cirProcess(r){
+  if(r.onlyGtin){say('warn','Es un código de barras sin serie. Escaneá el DataMatrix o QR de la caja.');return}
+  const m=gtinMap(r.gtin);
+  if(!m){say('bad','<b>Código nunca dado de alta.</b> El GTIN '+r.gtin+' no está vinculado a ningún insumo: hay que recibirlo primero.');return}
+  if(!m.serie){say('warn','<b>'+esc(m.desc)+'</b> se controla por cantidad: no hace falta escanearlo. Se descuenta al hacer el inventario.');return}
+  const u=S.items.find(x=>x.ins===m.id&&x.serieNo===r.serie);
+  if(!u){say('bad','<b>Serie nunca dada de alta:</b> '+esc(r.serie)+' ('+esc(m.desc)+'). Puede no haberse escaneado en la recepción.');return}
+  if(u.estado==='consumido'){const c=S.cirugias.find(x=>x.id===u.cirId);say('bad','<b>Ya consumida:</b> la serie '+esc(u.serieNo)+' se usó el '+ar(c?c.f:'')+(c?' ('+esc(c.hc)+')':'')+'.');return}
+  if(u.estado==='faltante'){say('bad','<b>Serie dada de baja</b> como faltante en un inventario.');return}
+  if(S.cart.includes(u.id)){say('warn','Esa unidad ya está en la lista.');return}
+  if(u.venc&&dias(u.venc)<0){say('bad','<b>Vencido:</b> la serie '+esc(u.serieNo)+' venció el '+ar(u.venc)+'.');return}
+  S.cart.push(u.id);say('ok','<b>Agregado:</b> '+esc(m.desc)+' · serie '+esc(u.serieNo)+(u.venc&&dias(u.venc)<=30?' <b>(vence en '+dias(u.venc)+' días)</b>':''));
+}
+function invProcess(r){
+  const g=r.onlyGtin||r.gtin,m=gtinMap(g);
+  if(!m){say('bad','<b>Código no vinculado a ningún insumo</b> (GTIN '+esc(g)+'). Hay que darlo de alta en la recepción.');return}
+  if(!m.serie){const n=(num(S.inv.cont[m.id])||0)+1;S.inv.cont[m.id]=n;say('ok','<b>Contado:</b> '+esc(m.desc)+' · lleva '+n+' unidad(es).');return}
+  if(r.onlyGtin){say('warn','Este insumo se identifica por serie: escaneá el DataMatrix o QR de la unidad.');return}
+  const u=S.items.find(x=>x.ins===m.id&&x.serieNo===r.serie);
+  if(!u||u.estado!=='stock'){say('bad','<b>Esa unidad no figura en el stock teórico</b> (serie '+esc(r.serie)+'): puede estar consumida, dada de baja o no haberse recibido.');return}
+  if(S.inv.seen.includes(u.id)){say('warn','Ya estaba contada.');return}
+  S.inv.seen.push(u.id);say('ok','<b>Contada:</b> '+esc(m.desc)+' · serie '+esc(u.serieNo));
+}
+function cerrarInv(){
+  const res={f:HOY,per:S.per,consDif:0,sob:0,falt:0,faltN:0};
+  MAESTRO.forEach(i=>{
+    if(i.serie){stockItems().filter(x=>x.ins===i.id&&!S.inv.seen.includes(x.id)).forEach(u=>{u.estado='faltante';res.falt+=u.cu;res.faltN++;mov(HOY,'AJUSTE',i.id,-1,u.cu,'Faltante serie '+u.serieNo)})}
+    else{const c=num(S.inv.cont[i.id])||0,d=c-stockUn(i.id);
+      if(d<0){let n=-d;stockItems().filter(x=>x.ins===i.id).sort((a,b)=>(a.venc||'9')<(b.venc||'9')?-1:1).forEach(u=>{if(n<=0)return;const q=Math.min(n,u.cant);u.cant-=q;n-=q;res.consDif+=q*u.cu;mov(HOY,'CONSDIF',i.id,-q,u.cu,'Inventario '+ar(HOY)+' · lote '+u.lote);if(u.cant<=0)u.estado='agotado'})}
+      else if(d>0){res.sob+=d*i.cu;addItem(i.id,{tipo:'AJUSTE',f:HOY,cu:i.cu,lote:'SOBRANTE',venc:'',cant:d,ref:'Sobrante de inventario'})}}});
+  S.invs.push(res);S.per++;
+  stockItems().forEach(u=>mov(HOY,'SI',u.ins,u.cant,u.cu,'Cierre de inventario '+ar(HOY)));
+  S.inv={cont:{},seen:[],serieDone:false};S.msg=null;
+  toast('Inventario cerrado: el conteo es el nuevo saldo inicial');S.tab='resumen';render();window.scrollTo(0,0);
+}
+function simInv(){
+  const consumo={'VIS-02':3,'BIS-23':9,'SUT-10':11,'JER-05':41,'GAS-10':36,'GUA-75':52,'PRO-01':14};
+  MAESTRO.forEach(i=>{if(i.serie){const us=stockItems().filter(x=>x.ins===i.id);us.forEach((u,k)=>{if(!(i.id==='LIO-210'&&k===1)&&!S.inv.seen.includes(u.id))S.inv.seen.push(u.id)})}
+    else S.inv.cont[i.id]=String(Math.max(0,stockUn(i.id)-(consumo[i.id]||0)))});
+  S.inv.serieDone=true;say('ok','Recuento simulado: se escaneó casi todo, con una unidad con serie que no apareció.');
+}
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act;
+  if(a==='tab')return go(b.dataset.t);
+  if(a==='role'){S.role=b.dataset.v;S.msg=null;return render()}
+  if(a==='reset'){if(b.dataset.armed){const k=S.role;seed();S.role=k;S.msg=null;S.pend=null;S.learn=null;S.imp=null;render();toast('Demo reiniciada')}else{b.dataset.armed='1';b.textContent='¿Seguro? Tocá de nuevo';setTimeout(()=>{b.dataset.armed='';b.textContent='Reiniciar demo'},3000)}return}
+  if(a==='sf'){S.sf=S.sf===b.dataset.v?null:b.dataset.v;S.pg.stock=1;return render()}
+  if(a==='barra'){S.sf=S.sf===b.dataset.k?null:b.dataset.k;S.pg.stock=1;render();const t=$('#stk');if(t)t.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});return}
+  if(a==='chm'){S.chM=b.dataset.v;return render()}
+  if(a==='pg'){S.pg[b.dataset.k]=+b.dataset.v;return render()}
+  if(a==='limpS'){S.sd1='';S.sd2='';S.pg.stock=1;return render()}
+  if(a==='limpC'){S.cd1='';S.cd2='';S.cq='';S.pg.compras=1;return render()}
+  if(a==='cf'){S.cf=b.dataset.v;return render()}
+  if(a==='togF'){const k='f'+b.dataset.id;S.open[k]=!S.open[k];return render()}
+  if(a==='togCir'){const k=b.dataset.k;S.open[k]=!S.open[k];return render()}
+  if(a==='rango'){const r=b.dataset.r;if(r==='hoy'){S.fDesde=HOY;S.fHasta=HOY}else if(r==='7'){S.fDesde=HOY;S.fHasta=addDays(7)}else if(r==='-30'){S.fDesde=addDays(-30);S.fHasta=HOY}else{S.fDesde='';S.fHasta=''}return render()}
+  if(a==='selFac'){S.recSel=+b.dataset.id;S.msg=null;S.pend=null;S.learn=null;return render()}
+  if(a==='simRec'){const f=S.facturas.find(x=>x.id===S.recSel),l=f.lineas.find(x=>x.id===+b.dataset.l),m=ins(l.ins);
+    S.pend=null;S.learn=null;S.msg=null;const code=genCode(m,{lote:'L'+(2500+Math.floor(Math.random()*400)),venc:addDays(540),serie:newSerie()});return onScan(code)}
+  if(a==='simErr'){const f=S.facturas.find(x=>x.id===S.recSel),k=b.dataset.k;S.pend=null;S.learn=null;S.msg=null;let code;
+    const l0=f.lineas.find(l=>l.rec<l.cant&&ins(l.ins).serie)||f.lineas.find(l=>l.rec<l.cant)||f.lineas[0],m0=ins(l0.ins);
+    if(k==='venc')code=genCode(m0,{lote:'LV01',venc:addDays(-20),serie:newSerie()});
+    if(k==='dup'){const u=S.items.find(x=>x.serieNo&&ins(x.ins).serie&&f.lineas.some(l=>l.ins===x.ins&&l.rec<l.cant))||S.items.find(x=>x.serieNo);const mm=ins(u.ins);
+      if(!f.lineas.some(l=>l.ins===u.ins&&l.rec<l.cant)){say('warn','Para esta prueba la factura elegida necesita un renglón con serie pendiente.');return render()}
+      code=genCode(mm,{lote:u.lote,venc:u.venc,serie:u.serieNo})}
+    if(k==='otra'){const o=MAESTRO.find(x=>x.gtin&&!f.lineas.some(l=>l.ins===x.id));code=genCode(o,{lote:'LX9',venc:addDays(300),serie:newSerie()})}
+    if(k==='exceso'){const l=f.lineas.find(l=>l.rec>=l.cant);if(!l){say('warn','Para esta prueba hace falta un renglón ya recibido por completo.');return render()}code=genCode(ins(l.ins),{lote:'LZ1',venc:addDays(300),serie:newSerie()})}
+    return onScan(code)}
+  if(a==='okPend'){const f=S.facturas.find(x=>x.id===S.recSel),l=f.lineas.find(x=>x.id===S.pend.l),m=ins(S.pend.ins);
+    const lote=$('#p-lote').value.trim(),venc=$('#p-venc').value,c=num($('#p-cant').value);
+    if(!c||c<=0||c!==Math.floor(c)){say('bad','Ingresá una cantidad entera mayor a cero.');return render()}
+    if(c>l.cant-l.rec){say('bad','<b>Supera lo facturado:</b> quedan '+(l.cant-l.rec)+' por recibir de '+esc(m.desc)+'.');S.pend.lote=lote;S.pend.venc=venc;S.pend.cant=c;return render()}
+    if(venc&&dias(venc)<0){say('bad','<b>Vencido:</b> no se da de alta.');S.pend.lote=lote;S.pend.venc=venc;return render()}
+    if(!lote){say('warn','Cargá el lote para poder rastrear el producto.');S.pend.venc=venc;S.pend.cant=c;return render()}
+    addItem(m.id,{tipo:'COMPRA',f:HOY,cu:l.cu,lote,venc,cant:c,fac:f.id,ref:'Fac. '+f.nro});l.rec+=c;S.pend=null;
+    say('ok','<b>Alta registrada:</b> '+c+' × '+esc(m.desc)+' · lote '+esc(lote));logEv('ok',c+' × '+esc(m.desc)+' · lote '+esc(lote));
+    if(facEstado(f)==='completa')toast('Factura '+f.nro+' recibida completa');return render()}
+  if(a==='noPend'){S.pend=null;S.msg=null;return render()}
+  if(a==='okLearn'){const id=+$('#l-sel').value,f=S.facturas.find(x=>x.id===S.recSel),l=f.lineas.find(x=>x.id===id),r=S.learn.r;
+    S.gtinmap[r.gtin]=l.ins;S.learn=null;S.msg=null;logEv('warn','GTIN '+r.gtin+' vinculado a '+esc(ins(l.ins).desc));toast('Vinculado: la próxima caja se reconoce sola');recProcess(r,f);return render()}
+  if(a==='noLearn'){S.learn=null;S.msg=null;return render()}
+  if(a==='simCir'){const u=S.items.find(x=>x.id===+b.dataset.id);return onScan(genCode(ins(u.ins),{lote:u.lote,venc:u.venc,serie:u.serieNo}))}
+  if(a==='simCirErr'){const k=b.dataset.k;let code;
+    if(k==='consumida'){const u=S.items.find(x=>x.estado==='consumido'&&x.serieNo);code=genCode(ins(u.ins),{lote:u.lote,venc:u.venc,serie:u.serieNo})}
+    if(k==='nunca')code=genCode(ins('LIO-210'),{lote:'LN1',venc:addDays(400),serie:newSerie()});
+    if(k==='cantidad')code=genCode(ins('GAS-10'),{lote:'G2311',venc:addDays(900),serie:''});
+    return onScan(code)}
+  if(a==='quitar'){S.cart=S.cart.filter(x=>x!==+b.dataset.id);S.msg=null;return render()}
+  if(a==='descartar'){S.cart=[];S.msg=null;return render()}
+  if(a==='regCir'){const fc=S.cab.f||HOY;const c={id:nid(),f:fc,hc:S.cab.pac,proc:S.cab.proc,cir:S.cab.cir,units:S.cart.slice(),per:S.per,h:(S.prog.find(x=>x.id===S.cab.prog)||{}).h||new Date().toTimeString().slice(0,5),q:(S.prog.find(x=>x.id===S.cab.prog)||{}).q||''};
+    S.cart.forEach(id=>{const u=S.items.find(x=>x.id===id);u.estado='consumido';u.cirId=c.id;mov(fc,'CONSUMO',u.ins,-1,u.cu,c.hc+' · '+c.proc)});
+    S.cirugias.push(c);const pg=S.prog.find(x=>x.id===S.cab.prog);if(pg){pg.estado='realizada';pg.cirId=c.id}const n=c.units.length;S.cart=[];S.cab={pac:'',proc:'',cir:'',prog:null,f:HOY};S.msg=null;
+    say('ok','<b>Consumo registrado:</b> '+n+' insumo(s) en '+esc(c.proc)+' ('+esc(c.hc)+').'+(admin()?' Costo directo '+money(costoCir(c))+'.':''));toast('Consumo registrado');return render()}
+  if(a==='simInv'){simInv();return render()}
+  if(a==='simInvIns'){const i=ins(b.dataset.id),n=+b.dataset.n||1;
+    if(i.serie){const u=stockItems().find(x=>x.ins===i.id&&!S.inv.seen.includes(x.id));if(!u){say('warn','Ya se escanearon todas las unidades de '+esc(i.desc)+'.');return render()}
+      return onScan(genCode(i,{lote:u.lote,venc:u.venc,serie:u.serieNo}))}
+    const u=stockItems().find(x=>x.ins===i.id);const code=genCode(i,{lote:u?u.lote:'L1',venc:u?u.venc:addDays(300),serie:''});
+    S.inv.cont[i.id]=(num(S.inv.cont[i.id])||0)+n-1;return onScan(code)}
+  if(a==='resetInv'){S.inv={cont:{},seen:[],serieDone:false};S.msg=null;return render()}
+  if(a==='cerrarInv')return cerrarInv();
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='sd1'){S.sd1=t.value;S.pg.stock=1;return render()}
+  if(t.id==='sd2'){S.sd2=t.value;S.pg.stock=1;return render()}
+  if(t.id==='cd1'){S.cd1=t.value;S.pg.compras=1;return render()}
+  if(t.id==='cd2'){S.cd2=t.value;S.pg.compras=1;return render()}
+  if(t.id==='fd'){S.fDesde=t.value;return render()}
+  if(t.id==='fh'){S.fHasta=t.value;return render()}
+  if(t.id==='c-fecha'){const f=t.value||HOY,L=S.prog.filter(p=>p.estado==='programada'&&p.f===f);const keep=!S.cab.prog;
+    S.cab=L.length===1?{f,pac:L[0].hc,proc:L[0].proc,cir:L[0].cir,prog:L[0].id}:{f,pac:keep?S.cab.pac:'',proc:keep?S.cab.proc:'',cir:keep?S.cab.cir:'',prog:null};return render()}
+  if(t.id==='c-prog'){const p=S.prog.find(x=>x.id===+t.value);const f=S.cab.f||HOY;S.cab=p?{f,pac:p.hc,proc:p.proc,cir:p.cir,prog:p.id}:{f,pac:'',proc:'',cir:'',prog:null};return render()}
+  if(t.id==='c-proc'){S.cab.proc=t.value;S.cab.prog=null;return render()}
+  if(t.id==='c-cir'){S.cab.cir=t.value;S.cab.prog=null;return render()}
+  if(t.id==='ex-solo'){S.exSolo=t.checked;S.pg.ex=1;return render()}
+  if(t.id==='serieDone'){S.inv.serieDone=t.checked;MAESTRO.forEach(refreshInvRow);refreshInvFoot();save()}
+});
+function refreshInvRow(i){const k=invCells(i),c=$('#ic-'+i.id),d=$('#id-'+i.id),x=$('#it-'+i.id);if(c)c.textContent=k.c==null?0:k.c;if(d)d.textContent=k.d==null?'—':k.d;if(x)x.innerHTML=k.txt}
+function refreshInvFoot(){const t=$('#invTot');if(t)t.innerHTML=invTotTxt(invCalc());const b=$('#cerrar');if(b)b.disabled=!invOk()}
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.id==='qs'||t.id==='cq'||t.id==='exq'){const id=t.id,pos=t.selectionStart;if(id==='qs'){S.qs=t.value;S.pg.stock=1}else if(id==='exq'){S.exQ=t.value;S.pg.ex=1}else{S.cq=t.value;S.pg.compras=1}render();const el=$('#'+id);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}return}
+  if(t.id==='c-pac'){S.cab.pac=t.value.trim();S.cab.prog=null;const r=$('[data-act=regCir]');if(r)r.disabled=!(S.cart.length&&S.cab.pac&&S.cab.proc&&S.cab.cir);return}
+  if(t.dataset&&t.dataset.ins){S.inv.cont[t.dataset.ins]=t.value;refreshInvRow(ins(t.dataset.ins));refreshInvFoot();save()}
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.id==='scan'&&e.key==='Enter'){e.preventDefault();const v=e.target.value;e.target.value='';if(v.trim())onScan(v)}
+});
+render();
+})();
+</script>
+
+
+</body></html>
