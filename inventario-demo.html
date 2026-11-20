@@ -1,0 +1,2235 @@
+<!DOCTYPE html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Gestión de Inventario — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style id="app-style">
+  :root{
+    --ink:#1E2A38; --ink-soft:#3C4A57; --muted:#5B6670; --paper:#F5F6F4; --surface:#FFFFFF; --surface-2:#EEF1EF; --border:#D7DCDA;
+    --accent:#2B5F73; --accent-strong:#1E4453; --accent-soft:#DCEAEE; --accent-ink:#14343F;
+    --good:#2F7D52; --good-soft:#E1F0E7; --warning:#B4761F; --warning-soft:#F7E9D3; --critical:#B23A34; --critical-soft:#F6E1DF; --expired:#7A2323; --expired-soft:#EFD3D1;
+    --shadow: 0 1px 2px rgba(30,42,56,.06), 0 6px 20px -8px rgba(30,42,56,.14);
+    --focus: 0 0 0 3px rgba(43,95,115,.35);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#E9EDEE; --ink-soft:#C7D0D4; --muted:#93A0A8; --paper:#101820; --surface:#161F27; --surface-2:#1C2730; --border:#2B3841;
+      --accent:#7BC1D4; --accent-strong:#9AD3E3; --accent-soft:#1E3540; --accent-ink:#D9F1F7;
+      --good:#6FCB94; --good-soft:#16332A; --warning:#E3AE64; --warning-soft:#3A2A14; --critical:#E38B83; --critical-soft:#3A1E1C; --expired:#F2938A; --expired-soft:#43201D;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -10px rgba(0,0,0,.55);
+      --focus: 0 0 0 3px rgba(123,193,212,.4);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#E9EDEE; --ink-soft:#C7D0D4; --muted:#93A0A8; --paper:#101820; --surface:#161F27; --surface-2:#1C2730; --border:#2B3841;
+    --accent:#7BC1D4; --accent-strong:#9AD3E3; --accent-soft:#1E3540; --accent-ink:#D9F1F7;
+    --good:#6FCB94; --good-soft:#16332A; --warning:#E3AE64; --warning-soft:#3A2A14; --critical:#E38B83; --critical-soft:#3A1E1C; --expired:#F2938A; --expired-soft:#43201D;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -10px rgba(0,0,0,.55);
+    --focus: 0 0 0 3px rgba(123,193,212,.4);
+    color-scheme: dark;
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:'Public Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
+  img{ max-width:100%; }
+  [hidden]{ display:none!important; }
+  #app{ max-width:1180px; margin:0 auto; padding:28px 20px 64px; }
+  h1,h2,h3{ font-family:'Fraunces',Georgia,'Times New Roman',serif; font-weight:600; text-wrap:balance; margin:0; }
+  .mono{ font-family:'IBM Plex Mono',SFMono-Regular,Consolas,'Liberation Mono',monospace; font-variant-numeric:tabular-nums; }
+  a{ color:var(--accent); }
+  button{ font-family:inherit; }
+  ::selection{ background:var(--accent-soft); }
+  :focus-visible{ outline:none; box-shadow:var(--focus); border-radius:6px; }
+
+  .topbar{ display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:16px 24px; margin-bottom:22px; }
+  .topbar-title{ display:flex; flex-direction:column; gap:6px; }
+  .topbar-title h1{ font-size:1.7rem; letter-spacing:-.01em; }
+  .badge{ display:inline-flex; align-items:center; gap:6px; align-self:flex-start; font-size:.72rem; font-weight:600; letter-spacing:.03em; text-transform:uppercase; padding:4px 10px; border-radius:999px; background:var(--accent-soft); color:var(--accent-ink); }
+  .subtext{ color:var(--muted); font-size:.92rem; max-width:46ch; }
+  .topbar-controls{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+  .search{ position:relative; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:8px 12px; min-width:220px; box-shadow:var(--shadow); }
+  .search input{ border:0; outline:0; background:transparent; color:var(--ink); font-size:.92rem; width:100%; }
+  .search svg{ flex:none; opacity:.55; }
+  .search-suggest{ position:absolute; top:100%; left:0; right:0; margin-top:6px; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:var(--shadow); z-index:35; overflow:hidden; }
+  .suggest-item{ display:flex; flex-direction:column; gap:1px; width:100%; text-align:left; padding:8px 12px; border:0; border-top:1px solid var(--border); background:transparent; cursor:pointer; font:inherit; color:var(--ink); }
+  .suggest-item:first-child{ border-top:0; }
+  .suggest-item:hover, .suggest-item:focus-visible{ background:var(--surface-2); }
+  .suggest-name{ font-size:.86rem; font-weight:600; }
+  .suggest-meta{ font-size:.74rem; color:var(--muted); }
+  .suggest-empty{ padding:10px 12px; font-size:.8rem; color:var(--muted); }
+
+  .btn{ appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--ink); font-size:.88rem; font-weight:600; padding:9px 14px; border-radius:9px; cursor:pointer; box-shadow:var(--shadow); transition:transform .08s ease, background .15s ease; }
+  .btn:hover{ background:var(--surface-2); }
+  .btn:active{ transform:translateY(1px); }
+  .btn-accent{ background:var(--accent); border-color:var(--accent-strong); color:#fff; }
+  .btn-accent:hover{ background:var(--accent-strong); }
+  .btn-ghost{ background:transparent; box-shadow:none; }
+  .btn-danger{ background:var(--critical-soft); border-color:var(--critical); color:var(--critical); }
+  .btn-sm{ padding:6px 10px; font-size:.8rem; border-radius:7px; }
+  .btn[disabled]{ opacity:.5; cursor:not-allowed; }
+
+  .kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+  .kpi{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:6px; }
+  .kpi-label{ font-size:.76rem; font-weight:600; letter-spacing:.03em; text-transform:uppercase; color:var(--muted); }
+  .kpi-value{ font-size:1.65rem; font-weight:600; }
+  .kpi-sub{ font-size:.78rem; color:var(--muted); }
+  .kpi.tone-critical .kpi-value{ color:var(--critical); }
+  .kpi.tone-warning .kpi-value{ color:var(--warning); }
+  .kpi.tone-good .kpi-value{ color:var(--good); }
+  .kpi-spotlight{ grid-column:span 2; }
+  .kpi-spotlight-name{ font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:1.05rem; line-height:1.25; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .kpi-spotlight .kpi-value{ font-size:1.3rem; }
+  .kpi-clickable{ appearance:none; cursor:pointer; text-align:left; width:100%; font:inherit; color:inherit; border:2px solid transparent; transition:background .12s ease, border-color .12s ease, transform .08s ease; }
+  .kpi-clickable:hover{ background:var(--surface-2); }
+  .kpi-clickable:active{ transform:translateY(1px); }
+  .kpi-clickable-active{ border-color:var(--accent); background:var(--accent-soft); }
+  .kpi-btn-hint{ font-size:.7rem; color:var(--muted); margin-top:2px; }
+  .kpi-clickable-active .kpi-btn-hint{ color:var(--accent-ink); font-weight:600; }
+
+  .panels{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:26px; }
+  .panel{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px 18px 8px; box-shadow:var(--shadow); }
+  .panel h2{ font-size:1.02rem; margin-bottom:2px; }
+  .panel-sub{ font-size:.78rem; color:var(--muted); margin-bottom:10px; }
+  .panel-title-row{ position:relative; display:flex; align-items:center; gap:6px; }
+  .panel-title-row h2{ margin-bottom:0; }
+  .info-btn{ appearance:none; flex:none; width:20px; height:20px; min-width:24px; min-height:24px; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; border:1px solid var(--border); background:var(--surface-2); color:var(--muted); font-size:.72rem; font-weight:700; font-family:'IBM Plex Mono',monospace; cursor:pointer; line-height:1; padding:0; }
+  .info-btn:hover{ background:var(--accent-soft); color:var(--accent-ink); border-color:var(--accent); }
+  .info-btn[aria-expanded="true"]{ background:var(--accent); color:#fff; border-color:var(--accent-strong); }
+  .info-pop{ position:absolute; top:100%; left:0; margin-top:8px; z-index:25; width:min(300px, 80vw); background:var(--ink); color:var(--paper); font-size:.78rem; font-weight:500; line-height:1.45; padding:10px 12px; border-radius:10px; box-shadow:var(--shadow); }
+  .panel-empty{ display:flex; align-items:center; gap:8px; color:var(--good); font-weight:600; font-size:.86rem; padding:10px 0 16px; }
+  .alert-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-top:1px solid var(--border); font-size:.86rem; }
+  .alert-row:first-of-type{ border-top:0; }
+  .alert-name{ font-weight:600; }
+  .alert-meta{ color:var(--muted); font-size:.78rem; }
+  .alert-more{ padding:8px 0 12px; font-size:.78rem; color:var(--muted); }
+  .panel-pager{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 0 14px; border-top:1px solid var(--border); margin-top:2px; }
+  .panel-pager-info{ font-size:.74rem; color:var(--muted); }
+  .panel-pager-controls{ display:flex; align-items:center; gap:8px; }
+  .panel-pager-page{ font-size:.76rem; color:var(--ink-soft); font-weight:600; white-space:nowrap; }
+  .panel-pager .btn-sm{ padding:4px 9px; }
+
+  .pill{ display:inline-flex; align-items:center; gap:5px; font-size:.74rem; font-weight:600; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+  .pill-critical{ background:var(--critical-soft); color:var(--critical); }
+  .pill-warning{ background:var(--warning-soft); color:var(--warning); }
+  .pill-good{ background:var(--good-soft); color:var(--good); }
+  .pill-expired{ background:var(--expired); color:#fff; }
+  .pill-neutral{ background:var(--surface-2); color:var(--muted); }
+
+  .toolbar{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ border:1px solid var(--border); background:var(--surface); color:var(--ink-soft); font-size:.8rem; font-weight:600; padding:6px 12px; border-radius:999px; cursor:pointer; }
+  .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent-strong); color:#fff; }
+  .toolbar-right{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+  .toolbar-right .search{ min-width:200px; }
+
+  .table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow); background:var(--surface); }
+  table{ border-collapse:collapse; width:100%; min-width:920px; font-size:.86rem; }
+  thead th{ text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .th-sort{ display:inline-flex; align-items:center; gap:5px; background:none; border:0; padding:0; margin:0; font:inherit; font-size:.72rem; letter-spacing:.03em; text-transform:uppercase; color:var(--muted); font-weight:600; cursor:pointer; }
+  .th-sort:hover{ color:var(--ink); }
+  .sort-arrow{ font-size:.75rem; opacity:.35; }
+  .sort-arrow.active{ opacity:1; color:var(--accent); }
+  th.right .th-sort{ width:100%; justify-content:flex-end; }
+  tbody td{ padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:0; }
+  tbody tr:hover{ background:var(--surface-2); }
+  .prod-name{ font-weight:600; }
+  .prod-meta{ color:var(--muted); font-size:.78rem; margin-top:2px; }
+  .stockcell{ display:flex; flex-direction:column; gap:5px; min-width:110px; }
+  .stockbar{ height:6px; border-radius:999px; background:var(--surface-2); overflow:hidden; }
+  .stockbar > span{ display:block; height:100%; border-radius:999px; }
+  .num{ font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums; }
+  .right{ text-align:right; }
+  .empty-state{ padding:40px 20px; text-align:center; color:var(--muted); }
+
+  .pager{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
+  .pager-info{ font-size:.8rem; color:var(--muted); }
+  .pager-controls{ display:flex; align-items:center; gap:10px; }
+  .pager-page{ font-size:.82rem; color:var(--ink-soft); font-weight:600; white-space:nowrap; }
+
+  .toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:var(--ink); color:var(--paper); font-size:.86rem; padding:11px 18px; border-radius:10px; box-shadow:var(--shadow); z-index:60; max-width:90vw; text-align:center; }
+
+  .footnote{ margin-top:22px; color:var(--muted); font-size:.78rem; }
+
+  .concentracion-head{ margin:36px 0 14px; padding-top:26px; border-top:1px solid var(--border); }
+  .concentracion-head h2{ font-size:1.35rem; margin-bottom:6px; }
+  .rank-row{ display:flex; align-items:center; gap:12px; padding:9px 0; border-top:1px solid var(--border); }
+  .rank-row:first-of-type{ border-top:0; }
+  .rank-num{ font-family:'IBM Plex Mono',monospace; color:var(--muted); font-size:.76rem; width:18px; flex:none; }
+  .rank-main{ flex:1; min-width:0; }
+  .rank-name{ font-weight:600; font-size:.86rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rank-meta{ font-size:.76rem; color:var(--muted); margin-top:1px; }
+  .rank-bar{ height:6px; border-radius:999px; background:var(--surface-2); overflow:hidden; margin-top:6px; }
+  .rank-bar > span{ display:block; height:100%; border-radius:999px; background:var(--accent); }
+  .rank-value{ text-align:right; font-family:'IBM Plex Mono',monospace; font-size:.84rem; font-weight:600; white-space:nowrap; }
+  .rank-sub{ text-align:right; font-size:.72rem; color:var(--muted); margin-top:2px; white-space:nowrap; }
+  .rank-row-clickable{ appearance:none; width:100%; text-align:left; font:inherit; color:inherit; background:transparent; border:2px solid transparent; border-radius:8px; margin:0; cursor:pointer; transition:background .12s ease, border-color .12s ease; }
+  .rank-row-clickable:hover{ background:var(--surface-2); }
+  .rank-row-active{ border-color:var(--accent); background:var(--accent-soft); }
+
+  .abc-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:2px; }
+  .abc-card{ display:block; width:100%; text-align:left; font:inherit; color:inherit; appearance:none; background:var(--surface-2); border:2px solid transparent; border-radius:10px; padding:12px 14px; cursor:pointer; transition:background .12s ease, border-color .12s ease, transform .08s ease; }
+  .abc-card:hover{ background:var(--surface); box-shadow:var(--shadow); }
+  .abc-card:active{ transform:translateY(1px); }
+  .abc-card-active{ border-color:var(--accent); background:var(--accent-soft); }
+  .abc-card-label{ font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:.94rem; margin-bottom:8px; }
+  .abc-metric{ display:flex; justify-content:space-between; gap:8px; font-size:.78rem; color:var(--ink-soft); padding:3px 0; }
+  .abc-metric b{ color:var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:600; }
+  .abc-card-hint{ font-size:.7rem; color:var(--muted); margin-top:8px; }
+  .abc-card-active .abc-card-hint{ color:var(--accent-ink); font-weight:600; }
+
+  .venc-callout{ font-size:.8rem; color:var(--ink-soft); line-height:1.5; }
+  .venc-callout b{ color:var(--ink); }
+
+  .kpis-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px; }
+  .kpis-2{ display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:22px; }
+
+  .tabs{ display:flex; flex-wrap:wrap; gap:4px 20px; border-bottom:1px solid var(--border); margin-bottom:24px; }
+  .tab-btn{ appearance:none; background:transparent; border:0; border-bottom:3px solid transparent; padding:10px 2px; margin-bottom:-1px; font-family:'Fraunces',Georgia,serif; font-size:.95rem; font-weight:600; letter-spacing:.01em; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .tab-btn:hover{ color:var(--ink-soft); }
+  .tab-btn[aria-selected="true"]{ color:var(--ink); border-bottom-color:var(--accent); }
+  .tab-badge{ background:var(--surface-2); color:var(--ink-soft); font-family:'Public Sans',sans-serif; font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .tab-btn[aria-selected="true"] .tab-badge{ background:var(--accent-soft); color:var(--accent-ink); }
+
+  .select{ appearance:none; border:1px solid var(--border); background:var(--surface); color:var(--ink); font-size:.86rem; font-weight:600; padding:9px 14px; border-radius:9px; cursor:pointer; box-shadow:var(--shadow); }
+
+  .mchart{ display:flex; align-items:flex-end; gap:6px; height:150px; margin:14px 0 4px; overflow-x:auto; padding-bottom:2px; }
+  .mchart-col{ appearance:none; font:inherit; color:inherit; background:transparent; border:2px solid transparent; border-radius:8px; padding:4px 2px 2px; cursor:pointer; flex:1 1 0; min-width:38px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:6px; transition:background .12s ease, border-color .12s ease; }
+  .mchart-col:hover{ background:var(--surface-2); }
+  .mchart-col:active{ transform:translateY(1px); }
+  .mchart-col-active{ border-color:var(--accent); background:var(--accent-soft); }
+  .mchart-bar-wrap{ flex:1; display:flex; align-items:flex-end; width:100%; }
+  .mchart-bar{ width:100%; border-radius:4px 4px 0 0; min-height:3px; }
+  .mchart-label{ font-size:.66rem; color:var(--muted); text-align:center; line-height:1.35; white-space:nowrap; }
+
+  @media (max-width:860px){
+    .abc-grid{ grid-template-columns:1fr; }
+    .kpis-3{ grid-template-columns:1fr; }
+    .kpis-2{ grid-template-columns:1fr; }
+  }
+
+  @media (max-width:860px){
+    .kpis{ grid-template-columns:1fr 1fr; }
+    .panels{ grid-template-columns:1fr; }
+    .field-row{ grid-template-columns:1fr; }
+  }
+  @media (max-width:560px){
+    .kpis{ grid-template-columns:1fr; }
+  }
+  @media print{
+    body{ background:#fff; }
+    .topbar-controls, .toolbar .chips, .toolbar-right .search, .toast{ display:none !important; }
+    .th-sort{ cursor:default; color:var(--ink); }
+    .kpi, .panel, .table-wrap{ box-shadow:none; border:1px solid #ccc; }
+    #app{ max-width:none; padding:12px; }
+    .table-wrap{ overflow:visible; }
+    table{ min-width:0; }
+  }
+</style>
+<div id="app"></div>
+<script id="app-data" type="application/json">{
+  "lastUpdated": "2026-11-15",
+  "productos": [
+    {
+      "id": "demo-0001",
+      "nombre": "Amoxicilina 500 mg caps.",
+      "laboratorio": "NovaSalud",
+      "lote": "ZN16915",
+      "vencimiento": "2030-03-01",
+      "ubicacion": "Depósito 1",
+      "stock": 5681,
+      "stockMinimo": 30,
+      "costo": 2700.22,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0002",
+      "nombre": "Lidocaína 2% fco.",
+      "laboratorio": "FarmaPlus",
+      "lote": "LN12352",
+      "vencimiento": "2029-02-01",
+      "ubicacion": "Depósito 1",
+      "stock": 130,
+      "stockMinimo": 10,
+      "costo": 7271.73,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0003",
+      "nombre": "Atropina 1 mg amp.",
+      "laboratorio": "NovaSalud",
+      "lote": "NG45785",
+      "vencimiento": "2027-09-01",
+      "ubicacion": "Depósito 1",
+      "stock": 1584,
+      "stockMinimo": 25,
+      "costo": 55446.76,
+      "precioVenta": 74021.2,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0004",
+      "nombre": "Hioscina 20 mg amp.",
+      "laboratorio": "BioGenérica S.A.",
+      "lote": "SZ04382",
+      "vencimiento": "2028-12-01",
+      "ubicacion": "Depósito 2",
+      "stock": 1155,
+      "stockMinimo": 15,
+      "costo": 7033.54,
+      "precioVenta": 10646.04,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0005",
+      "nombre": "Gasas estériles 5x5 x 25",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "CR50072",
+      "vencimiento": "2030-02-01",
+      "ubicacion": "Depósito 2",
+      "stock": 3,
+      "stockMinimo": 25,
+      "costo": 50.23,
+      "precioVenta": 66.59,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0006",
+      "nombre": "Ondansetrón 8 mg amp.",
+      "laboratorio": "Genix Pharma",
+      "lote": "GS77641",
+      "vencimiento": "2027-02-01",
+      "ubicacion": "Depósito 1",
+      "stock": 1120,
+      "stockMinimo": 10,
+      "costo": 30579.55,
+      "precioVenta": 41727.47,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0007",
+      "nombre": "Levotiroxina 100 mcg comp.",
+      "laboratorio": "Pampa Médica",
+      "lote": "DZ01562",
+      "vencimiento": "2026-11-01",
+      "ubicacion": "Depósito 1",
+      "stock": 4900,
+      "stockMinimo": 30,
+      "costo": 106234.69,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0008",
+      "nombre": "Aguja hipodérmica 21G",
+      "laboratorio": "Pampa Médica",
+      "lote": "HG63216",
+      "vencimiento": "2027-10-01",
+      "ubicacion": "Depósito 2",
+      "stock": 3852,
+      "stockMinimo": 20,
+      "costo": 40996.56,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0009",
+      "nombre": "Vancomicina 500 mg fco. amp.",
+      "laboratorio": "FarmaCentro",
+      "lote": "BF29883",
+      "vencimiento": "2028-10-01",
+      "ubicacion": "Depósito 2",
+      "stock": 5040,
+      "stockMinimo": 30,
+      "costo": 242.32,
+      "precioVenta": 351.49,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0010",
+      "nombre": "Adrenalina 1 mg amp.",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "HR91115",
+      "vencimiento": "2027-07-01",
+      "ubicacion": "Depósito 2",
+      "stock": 2959,
+      "stockMinimo": 20,
+      "costo": 5593.73,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0011",
+      "nombre": "Ibuprofeno 400 mg amp.",
+      "laboratorio": "Pampa Médica",
+      "lote": "MX80420",
+      "vencimiento": "2028-08-01",
+      "ubicacion": "Depósito 2",
+      "stock": 2274,
+      "stockMinimo": 15,
+      "costo": 168.71,
+      "precioVenta": 265.76,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0012",
+      "nombre": "Insulina NPH 100 UI/ml",
+      "laboratorio": "MedSur Labs",
+      "lote": "PW51138",
+      "vencimiento": "2027-08-01",
+      "ubicacion": "Depósito 1",
+      "stock": 1,
+      "stockMinimo": 20,
+      "costo": 106.75,
+      "precioVenta": 164.78,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0013",
+      "nombre": "Gasas estériles 10x10 x 25",
+      "laboratorio": "MedSur Labs",
+      "lote": "YF17141",
+      "vencimiento": "2029-09-01",
+      "ubicacion": "Depósito 2",
+      "stock": 2887,
+      "stockMinimo": 15,
+      "costo": 70796.01,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0014",
+      "nombre": "Gentamicina 160 mg amp.",
+      "laboratorio": "Vitalex",
+      "lote": "EY38826",
+      "vencimiento": "2030-01-01",
+      "ubicacion": "Depósito 2",
+      "stock": 3980,
+      "stockMinimo": 20,
+      "costo": 105.99,
+      "precioVenta": 154.3,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0015",
+      "nombre": "Cefalexina 500 mg caps.",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "HA82590",
+      "vencimiento": null,
+      "ubicacion": "Depósito 2",
+      "stock": 1304,
+      "stockMinimo": 20,
+      "costo": 7878.62,
+      "precioVenta": 12249.5,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0016",
+      "nombre": "Venda elástica 10 cm",
+      "laboratorio": "Quimed Argentina",
+      "lote": "GT09577",
+      "vencimiento": "2027-01-01",
+      "ubicacion": "Depósito 1",
+      "stock": 3906,
+      "stockMinimo": 20,
+      "costo": 99.73,
+      "precioVenta": 152.75,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0017",
+      "nombre": "Metronidazol 500 mg fco.",
+      "laboratorio": "Cruz del Sur Pharma",
+      "lote": "NS36516",
+      "vencimiento": "2029-12-01",
+      "ubicacion": "Depósito 1",
+      "stock": 3356,
+      "stockMinimo": 30,
+      "costo": 303.13,
+      "precioVenta": 407.24,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0018",
+      "nombre": "Metilprednisolona 500 mg fco.",
+      "laboratorio": "Lab Andina",
+      "lote": "ML24971",
+      "vencimiento": "2027-09-01",
+      "ubicacion": "Depósito 1",
+      "stock": 2612,
+      "stockMinimo": 20,
+      "costo": 28.92,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0019",
+      "nombre": "Ranitidina 50 mg amp.",
+      "laboratorio": "Vitalex",
+      "lote": "SF10248",
+      "vencimiento": "2027-05-01",
+      "ubicacion": "Depósito 1",
+      "stock": 4740,
+      "stockMinimo": 25,
+      "costo": 58137.51,
+      "precioVenta": 73241.23,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0020",
+      "nombre": "Camisolín descartable",
+      "laboratorio": "Lab Austral",
+      "lote": "XW87286",
+      "vencimiento": "2030-05-01",
+      "ubicacion": "Depósito 1",
+      "stock": 1024,
+      "stockMinimo": 30,
+      "costo": 6470.91,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0021",
+      "nombre": "Jeringa descartable 5 ml",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "QY86758",
+      "vencimiento": "2027-09-01",
+      "ubicacion": "Depósito 2",
+      "stock": 1959,
+      "stockMinimo": 15,
+      "costo": 6088.68,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0022",
+      "nombre": "Dexametasona 8 mg amp.",
+      "laboratorio": "Dromos Labs",
+      "lote": "UN62022",
+      "vencimiento": "2026-05-01",
+      "ubicacion": "Depósito 1",
+      "stock": 3,
+      "stockMinimo": 15,
+      "costo": 212.22,
+      "precioVenta": 282.98,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0023",
+      "nombre": "Hidrocortisona 100 mg fco.",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "MB83790",
+      "vencimiento": "2029-12-01",
+      "ubicacion": "Depósito 2",
+      "stock": 621,
+      "stockMinimo": 10,
+      "costo": 256.18,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0024",
+      "nombre": "Amiodarona 150 mg amp.",
+      "laboratorio": "Laboratorios del Norte",
+      "lote": "NT78424",
+      "vencimiento": "2027-10-01",
+      "ubicacion": "Depósito 2",
+      "stock": 3289,
+      "stockMinimo": 20,
+      "costo": 1570.84,
+      "precioVenta": 1896.68,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0025",
+      "nombre": "Loratadina 10 mg comp.",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "AK50614",
+      "vencimiento": "2028-03-01",
+      "ubicacion": "Depósito 2",
+      "stock": 3749,
+      "stockMinimo": 25,
+      "costo": 6161.47,
+      "precioVenta": 9170.76,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0026",
+      "nombre": "Tapabocas N95",
+      "laboratorio": "Laboratorios del Norte",
+      "lote": "GB05936",
+      "vencimiento": "2027-08-01",
+      "ubicacion": "Depósito 1",
+      "stock": 418,
+      "stockMinimo": 10,
+      "costo": 186.78,
+      "precioVenta": 254.6,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0027",
+      "nombre": "Rollo de papel para autoclave",
+      "laboratorio": "FarmaCentro",
+      "lote": "PF67167",
+      "vencimiento": null,
+      "ubicacion": "Depósito 1",
+      "stock": 457,
+      "stockMinimo": 15,
+      "costo": 278.74,
+      "precioVenta": 434.45,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0028",
+      "nombre": "Fenitoína 100 mg amp.",
+      "laboratorio": "Biotécnica Nacional",
+      "lote": "KT06617",
+      "vencimiento": null,
+      "ubicacion": "Depósito 1",
+      "stock": 2874,
+      "stockMinimo": 30,
+      "costo": 5393.71,
+      "precioVenta": 7774.46,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0029",
+      "nombre": "Guantes de examen látex M x 100",
+      "laboratorio": "Lab Austral",
+      "lote": "WV19687",
+      "vencimiento": "2027-03-01",
+      "ubicacion": "Depósito 2",
+      "stock": 2679,
+      "stockMinimo": 15,
+      "costo": 6523.13,
+      "precioVenta": 8920.86,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0030",
+      "nombre": "Equipo de suero microgotero",
+      "laboratorio": "Laboratorios del Norte",
+      "lote": "VQ32924",
+      "vencimiento": "2027-03-01",
+      "ubicacion": "Depósito 2",
+      "stock": 3134,
+      "stockMinimo": 30,
+      "costo": 4106.16,
+      "precioVenta": 5622.97,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0031",
+      "nombre": "Bromuro de ipratropio aerosol",
+      "laboratorio": "FarmaPlus",
+      "lote": "VJ87209",
+      "vencimiento": "2027-06-01",
+      "ubicacion": "Depósito 1",
+      "stock": 2016,
+      "stockMinimo": 15,
+      "costo": 72.86,
+      "precioVenta": 107.13,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0032",
+      "nombre": "Barbijo quirúrgico x 50",
+      "laboratorio": "Genix Pharma",
+      "lote": "VC26354",
+      "vencimiento": "2027-03-01",
+      "ubicacion": "Depósito 2",
+      "stock": 4533,
+      "stockMinimo": 25,
+      "costo": 5711.98,
+      "precioVenta": 7214.98,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0033",
+      "nombre": "Piperacilina + tazobactam 4.5 g",
+      "laboratorio": "FarmaCentro",
+      "lote": "TH79617",
+      "vencimiento": "2029-05-01",
+      "ubicacion": "Depósito 2",
+      "stock": 616,
+      "stockMinimo": 10,
+      "costo": 1681.7,
+      "precioVenta": 2338.17,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0034",
+      "nombre": "Sonda nasogástrica 14 Fr",
+      "laboratorio": "Dromos Labs",
+      "lote": "BB29671",
+      "vencimiento": "2027-12-01",
+      "ubicacion": "Depósito 2",
+      "stock": 2816,
+      "stockMinimo": 25,
+      "costo": 11699.12,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0035",
+      "nombre": "Rocuronio 50 mg amp.",
+      "laboratorio": "SaludActiva Labs",
+      "lote": "CB45618",
+      "vencimiento": "2026-11-01",
+      "ubicacion": "Depósito 2",
+      "stock": 252,
+      "stockMinimo": 10,
+      "costo": 125.44,
+      "precioVenta": 179.16,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0036",
+      "nombre": "Lorazepam 4 mg amp.",
+      "laboratorio": "Pampa Médica",
+      "lote": "KX25450",
+      "vencimiento": "2027-09-01",
+      "ubicacion": "Depósito 1",
+      "stock": 1098,
+      "stockMinimo": 15,
+      "costo": 47.96,
+      "precioVenta": 56.77,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0037",
+      "nombre": "Dopamina 200 mg amp.",
+      "laboratorio": "Lab Austral",
+      "lote": "KS40228",
+      "vencimiento": "2028-04-01",
+      "ubicacion": "Depósito 1",
+      "stock": 2580,
+      "stockMinimo": 20,
+      "costo": 241.37,
+      "precioVenta": 290.04,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0038",
+      "nombre": "Bolsa colectora de orina",
+      "laboratorio": "Vitalex",
+      "lote": "RX80137",
+      "vencimiento": "2026-01-01",
+      "ubicacion": "Depósito 2",
+      "stock": 8,
+      "stockMinimo": 25,
+      "costo": 3399.32,
+      "precioVenta": 4735.22,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0039",
+      "nombre": "Naloxona 0.4 mg amp.",
+      "laboratorio": "Genix Pharma",
+      "lote": "BA43209",
+      "vencimiento": "2027-02-01",
+      "ubicacion": "Depósito 1",
+      "stock": 3145,
+      "stockMinimo": 20,
+      "costo": 141.68,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0040",
+      "nombre": "Labetalol 100 mg comp.",
+      "laboratorio": "Dromos Labs",
+      "lote": "EQ64033",
+      "vencimiento": "2027-10-01",
+      "ubicacion": "Depósito 1",
+      "stock": 2856,
+      "stockMinimo": 15,
+      "costo": 5401.89,
+      "precioVenta": 8060.83,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0041",
+      "nombre": "Catéter venoso 20G",
+      "laboratorio": "BioGenérica S.A.",
+      "lote": "LH39459",
+      "vencimiento": "2030-10-01",
+      "ubicacion": "Depósito 2",
+      "stock": 5,
+      "stockMinimo": 25,
+      "costo": 6124.61,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0042",
+      "nombre": "Compresa quirúrgica 45x45",
+      "laboratorio": "BioGenérica S.A.",
+      "lote": "EP94619",
+      "vencimiento": "2027-04-01",
+      "ubicacion": "Depósito 1",
+      "stock": 71,
+      "stockMinimo": 15,
+      "costo": 28.87,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0043",
+      "nombre": "Conector en T",
+      "laboratorio": "FarmaCentro",
+      "lote": "MC84752",
+      "vencimiento": "2030-06-01",
+      "ubicacion": "Depósito 2",
+      "stock": 607,
+      "stockMinimo": 15,
+      "costo": 7398.38,
+      "precioVenta": 11435.65,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0044",
+      "nombre": "Paracetamol 500 mg comp.",
+      "laboratorio": "NovaSalud",
+      "lote": "GU49582",
+      "vencimiento": "2027-05-01",
+      "ubicacion": "Depósito 2",
+      "stock": 5436,
+      "stockMinimo": 30,
+      "costo": 1444.18,
+      "precioVenta": 1885.1,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0045",
+      "nombre": "Dipirona 1 g amp.",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "UK98923",
+      "vencimiento": "2026-04-01",
+      "ubicacion": "Depósito 1",
+      "stock": 2908,
+      "stockMinimo": 20,
+      "costo": 114.99,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0046",
+      "nombre": "Enoxaparina 40 mg jer.",
+      "laboratorio": "MedSur Labs",
+      "lote": "MA55884",
+      "vencimiento": "2026-11-01",
+      "ubicacion": "Depósito 2",
+      "stock": 849,
+      "stockMinimo": 10,
+      "costo": 291.02,
+      "precioVenta": 437.02,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0047",
+      "nombre": "Bránula 22G",
+      "laboratorio": "Dromos Labs",
+      "lote": "JS68883",
+      "vencimiento": "2029-08-01",
+      "ubicacion": "Depósito 2",
+      "stock": 0,
+      "stockMinimo": 30,
+      "costo": 5569.88,
+      "precioVenta": 6975.54,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0048",
+      "nombre": "Sonda vesical Foley 16 Fr",
+      "laboratorio": "NovaSalud",
+      "lote": "LC68469",
+      "vencimiento": "2027-01-01",
+      "ubicacion": "Depósito 1",
+      "stock": 1221,
+      "stockMinimo": 20,
+      "costo": 3616.29,
+      "precioVenta": 4829.28,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0049",
+      "nombre": "Dobutamina 250 mg amp.",
+      "laboratorio": "Laboratorios Delta",
+      "lote": "EB86291",
+      "vencimiento": "2026-11-01",
+      "ubicacion": "Depósito 2",
+      "stock": 2751,
+      "stockMinimo": 20,
+      "costo": 337482.58,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0050",
+      "nombre": "Jeringa descartable 10 ml",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "DL35642",
+      "vencimiento": "2029-07-01",
+      "ubicacion": "Depósito 1",
+      "stock": 898,
+      "stockMinimo": 25,
+      "costo": 4703.8,
+      "precioVenta": 7510.61,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0051",
+      "nombre": "Azitromicina 500 mg comp.",
+      "laboratorio": "Cruz del Sur Pharma",
+      "lote": "AV30879",
+      "vencimiento": "2027-04-01",
+      "ubicacion": "Depósito 2",
+      "stock": 962,
+      "stockMinimo": 20,
+      "costo": 106.34,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0052",
+      "nombre": "Lanceta descartable x 100",
+      "laboratorio": "Dromos Labs",
+      "lote": "ST68696",
+      "vencimiento": "2029-07-01",
+      "ubicacion": "Depósito 2",
+      "stock": 1509,
+      "stockMinimo": 10,
+      "costo": 73493.2,
+      "precioVenta": 98258.67,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0053",
+      "nombre": "Heparina sódica 5000 UI/ml",
+      "laboratorio": "Quimed Argentina",
+      "lote": "DN95982",
+      "vencimiento": "2030-06-01",
+      "ubicacion": "Depósito 2",
+      "stock": 1938,
+      "stockMinimo": 20,
+      "costo": 43.09,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0054",
+      "nombre": "Guantes de examen látex S x 100",
+      "laboratorio": "Biotécnica Nacional",
+      "lote": "ZV37054",
+      "vencimiento": "2026-12-01",
+      "ubicacion": "Depósito 2",
+      "stock": 5260,
+      "stockMinimo": 30,
+      "costo": 33.4,
+      "precioVenta": 38.79,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0055",
+      "nombre": "Noradrenalina 4 mg amp.",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "HQ66476",
+      "vencimiento": "2028-07-01",
+      "ubicacion": "Depósito 1",
+      "stock": 633,
+      "stockMinimo": 10,
+      "costo": 35.72,
+      "precioVenta": 49.72,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0056",
+      "nombre": "Cofia descartable",
+      "laboratorio": "Biotécnica Nacional",
+      "lote": "LS79471",
+      "vencimiento": "2030-02-01",
+      "ubicacion": "Depósito 1",
+      "stock": 2316,
+      "stockMinimo": 25,
+      "costo": 198569.59,
+      "precioVenta": 313293.14,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0057",
+      "nombre": "Clindamicina 600 mg amp.",
+      "laboratorio": "FarmaPlus",
+      "lote": "CS59331",
+      "vencimiento": "2026-09-01",
+      "ubicacion": "Depósito 2",
+      "stock": 1324,
+      "stockMinimo": 10,
+      "costo": 291.36,
+      "precioVenta": 378.79,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0058",
+      "nombre": "Catéter subclavia doble lumen",
+      "laboratorio": "MedSur Labs",
+      "lote": "UE85582",
+      "vencimiento": "2028-09-01",
+      "ubicacion": "Depósito 1",
+      "stock": 612,
+      "stockMinimo": 20,
+      "costo": 162.52,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0059",
+      "nombre": "Ceftriaxona 1 g fco. amp.",
+      "laboratorio": "FarmaCentro",
+      "lote": "RA07231",
+      "vencimiento": "2028-03-01",
+      "ubicacion": "Depósito 1",
+      "stock": 545,
+      "stockMinimo": 25,
+      "costo": 6290.73,
+      "precioVenta": 7543.05,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0060",
+      "nombre": "Llave de 3 vías",
+      "laboratorio": "Pampa Médica",
+      "lote": "FQ79636",
+      "vencimiento": "2027-02-01",
+      "ubicacion": "Depósito 1",
+      "stock": 1745,
+      "stockMinimo": 10,
+      "costo": 5582.95,
+      "precioVenta": 8705.86,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0061",
+      "nombre": "Flumazenil 0.5 mg amp.",
+      "laboratorio": "NovaSalud",
+      "lote": "XH11657",
+      "vencimiento": "2027-10-01",
+      "ubicacion": "Depósito 2",
+      "stock": 3746,
+      "stockMinimo": 30,
+      "costo": 3612.53,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0062",
+      "nombre": "Diclofenac 75 mg amp.",
+      "laboratorio": "FarmaCentro",
+      "lote": "WR77242",
+      "vencimiento": "2027-07-01",
+      "ubicacion": "Depósito 2",
+      "stock": 803,
+      "stockMinimo": 25,
+      "costo": 2706.43,
+      "precioVenta": 4273.77,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0063",
+      "nombre": "Mascarilla de oxígeno adulto",
+      "laboratorio": "SaludActiva Labs",
+      "lote": "BV00785",
+      "vencimiento": "2027-02-01",
+      "ubicacion": "Depósito 2",
+      "stock": 1799,
+      "stockMinimo": 10,
+      "costo": 225.33,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0064",
+      "nombre": "Midazolam 15 mg amp.",
+      "laboratorio": "BioGenérica S.A.",
+      "lote": "ZQ35262",
+      "vencimiento": "2028-06-01",
+      "ubicacion": "Depósito 2",
+      "stock": 2312,
+      "stockMinimo": 30,
+      "costo": 242.36,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0065",
+      "nombre": "Set de curación descartable",
+      "laboratorio": "Rioplatense Farma",
+      "lote": "AY82173",
+      "vencimiento": "2027-06-01",
+      "ubicacion": "Depósito 2",
+      "stock": 12,
+      "stockMinimo": 20,
+      "costo": 55328.81,
+      "precioVenta": 82076.75,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0066",
+      "nombre": "Tubo endotraqueal 7.5",
+      "laboratorio": "Lab Austral",
+      "lote": "CN34133",
+      "vencimiento": "2028-05-01",
+      "ubicacion": "Depósito 1",
+      "stock": 5,
+      "stockMinimo": 15,
+      "costo": 106106.09,
+      "precioVenta": 142267.75,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0067",
+      "nombre": "Electrodo de bisturí eléctrico",
+      "laboratorio": "Genix Pharma",
+      "lote": "KF53165",
+      "vencimiento": "2030-09-01",
+      "ubicacion": "Depósito 2",
+      "stock": 1237,
+      "stockMinimo": 10,
+      "costo": 22718.46,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0068",
+      "nombre": "Propofol 1% fco.",
+      "laboratorio": "MedSur Labs",
+      "lote": "UG14415",
+      "vencimiento": "2027-07-01",
+      "ubicacion": "Depósito 1",
+      "stock": 5502,
+      "stockMinimo": 30,
+      "costo": 22.55,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0069",
+      "nombre": "Bisturí descartable Nº 11",
+      "laboratorio": "BioGenérica S.A.",
+      "lote": "LM03446",
+      "vencimiento": "2027-07-01",
+      "ubicacion": "Depósito 2",
+      "stock": 1988,
+      "stockMinimo": 10,
+      "costo": 6470.18,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0070",
+      "nombre": "Fentanilo 500 mcg amp.",
+      "laboratorio": "FarmaPlus",
+      "lote": "CW25533",
+      "vencimiento": null,
+      "ubicacion": "Depósito 2",
+      "stock": 703,
+      "stockMinimo": 15,
+      "costo": 53592.18,
+      "precioVenta": 66307.28,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0071",
+      "nombre": "Electrodo ECG adulto x 50",
+      "laboratorio": "FarmaPlus",
+      "lote": "JY61121",
+      "vencimiento": "2026-08-01",
+      "ubicacion": "Depósito 1",
+      "stock": 2587,
+      "stockMinimo": 15,
+      "costo": 6109.23,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0072",
+      "nombre": "Apósito transparente adhesivo",
+      "laboratorio": "Genix Pharma",
+      "lote": "SX69393",
+      "vencimiento": "2026-03-01",
+      "ubicacion": "Depósito 1",
+      "stock": 2505,
+      "stockMinimo": 25,
+      "costo": 177.83,
+      "precioVenta": 210.44,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0073",
+      "nombre": "Tira reactiva de glucemia x 50",
+      "laboratorio": "Genix Pharma",
+      "lote": "LB80886",
+      "vencimiento": "2030-08-01",
+      "ubicacion": "Depósito 2",
+      "stock": 361,
+      "stockMinimo": 25,
+      "costo": 6535.58,
+      "precioVenta": 0,
+      "tipo": "Descartable"
+    },
+    {
+      "id": "demo-0074",
+      "nombre": "Atracurio 50 mg amp.",
+      "laboratorio": "Lab Andina",
+      "lote": "QN94889",
+      "vencimiento": "2026-12-01",
+      "ubicacion": "Depósito 1",
+      "stock": 350,
+      "stockMinimo": 30,
+      "costo": 3670.74,
+      "precioVenta": 5084.84,
+      "tipo": "Medicamento"
+    },
+    {
+      "id": "demo-0075",
+      "nombre": "Vitamina K 10 mg amp.",
+      "laboratorio": "Laboratorios Delta",
+      "lote": "JY37606",
+      "vencimiento": "2029-09-01",
+      "ubicacion": "Depósito 1",
+      "stock": 8,
+      "stockMinimo": 20,
+      "costo": 2240.37,
+      "precioVenta": 0,
+      "tipo": "Medicamento"
+    }
+  ]
+}</script>
+<script>
+(function(){
+  'use strict';
+
+  var raw = JSON.parse(document.getElementById('app-data').textContent);
+  var state = { productos: raw.productos, lastUpdated: raw.lastUpdated };
+
+  var ui = { tab: 'stock', search: '', searchFocusId: null, filter: 'todos', claseFilter: null, top10Filter: false, provFilter: null, tipoFilter: null, monthFilter: null, infoOpen: null, sortField: 'vencimiento', sortDir: 'asc', page: 1, vencPage: 1, stockPage: 1, provPage: 1 };
+  var PANEL_PAGE_SIZE = 6;
+  var PAGE_SIZE = 10;
+  var COLUMNS = [
+    { key:'nombre', label:'Artículo', align:'' },
+    { key:'tipo', label:'Tipo', align:'' },
+    { key:'vencimiento', label:'Vencimiento', align:'' },
+    { key:'stock', label:'Stock', align:'' },
+    { key:'ubicacion', label:'Ubicación', align:'' },
+    { key:'costo', label:'Costo', align:'right' },
+    { key:'precioVenta', label:'Precio venta', align:'right' },
+    { key:'valor', label:'Valor en stock', align:'right' }
+  ];
+
+  var downloadsApi = null;
+  var downloadsReady = (window.claude && window.claude.use) ? window.claude.use('downloads') : Promise.resolve(null);
+  downloadsReady.then(function(api){ downloadsApi = api; });
+
+  var CUR = new Intl.NumberFormat('es-AR', { style:'currency', currency:'ARS', maximumFractionDigits:0 });
+  var DATEFMT = new Intl.DateTimeFormat('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+  function fmtMoney(n){ return CUR.format(Math.round(Number(n) || 0)); }
+  function fmtMoneyOrDash(n){ return (Number(n) > 0) ? fmtMoney(n) : '—'; }
+  function fmtPct1(n){ return (Math.round((Number(n)||0)*10)/10).toLocaleString('es-AR', {minimumFractionDigits:1, maximumFractionDigits:1}) + '%'; }
+  function stockLabel(p){ var min = Number(p.stockMinimo) || 0; return min > 0 ? (p.stock + ' / mín. ' + min) : (p.stock + ' (sin mínimo definido)'); }
+  function fmtDate(iso){ if(!iso) return '—'; var d = new Date(iso + 'T00:00:00'); return DATEFMT.format(d); }
+  function startOfToday(){ var d = new Date(); d.setHours(0,0,0,0); return d; }
+  function diffDays(iso){
+    if(!iso) return null;
+    var v = new Date(iso + 'T00:00:00');
+    var t = startOfToday();
+    return Math.round((v - t) / 86400000);
+  }
+  function vencStatus(iso){
+    var d = diffDays(iso);
+    if(d === null) return { key:'sinvencer', d:d };
+    if(d < 0) return { key:'vencido', d:d };
+    if(d <= 30) return { key:'critico', d:d };
+    if(d <= 90) return { key:'alerta', d:d };
+    return { key:'ok', d:d };
+  }
+  function stockStatus(p){
+    var min = Number(p.stockMinimo) || 0;
+    var stock = Number(p.stock) || 0;
+    if(stock <= 0) return 'critico';
+    if(min > 0 && stock < min * 0.5) return 'critico';
+    if(min > 0 && stock < min) return 'alerta';
+    return 'ok';
+  }
+  function vencLabel(vs){
+    if(vs.key === 'sinvencer') return 'Sin vencimiento';
+    if(vs.key === 'vencido') return 'Vencido hace ' + Math.abs(vs.d) + (Math.abs(vs.d) === 1 ? ' día' : ' días');
+    if(vs.d === 0) return 'Vence hoy';
+    return 'Vence en ' + vs.d + (vs.d === 1 ? ' día' : ' días');
+  }
+  function vencPillClass(vs){
+    if(vs.key === 'vencido') return 'pill pill-expired';
+    if(vs.key === 'critico') return 'pill pill-critical';
+    if(vs.key === 'alerta') return 'pill pill-warning';
+    if(vs.key === 'sinvencer') return 'pill pill-neutral';
+    return 'pill pill-good';
+  }
+  function stockPillClass(ss){
+    if(ss === 'critico') return 'pill pill-critical';
+    if(ss === 'alerta') return 'pill pill-warning';
+    return 'pill pill-good';
+  }
+  function tipoOf(p){ return p.tipo || 'Sin clasificar'; }
+  function monthsDaysLabel(d){
+    if(d === null) return '';
+    if(d < 0){ var ad = Math.abs(d); return 'Vencido hace ' + ad + (ad === 1 ? ' día' : ' días'); }
+    if(d === 0) return 'Vence hoy';
+    var months = Math.floor(d / 30.4368);
+    var days = Math.round(d - months * 30.4368);
+    if(days >= 30){ months += 1; days -= 30; }
+    if(months <= 0) return 'Vence en ' + d + (d === 1 ? ' día' : ' días');
+    var out = months + (months === 1 ? ' mes' : ' meses');
+    if(days > 0) out += ' y ' + days + (days === 1 ? ' día' : ' días');
+    return 'Vence en ' + out;
+  }
+  var MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  function monthlyExpiryBuckets(rows){
+    var today = startOfToday();
+    var vencido = { n:0, valor:0 };
+    var months = [];
+    for(var i=0;i<12;i++){
+      var d = new Date(today.getFullYear(), today.getMonth()+i, 1);
+      months.push({ year:d.getFullYear(), month:d.getMonth(), n:0, valor:0 });
+    }
+    rows.forEach(function(r){
+      if(!r.p.vencimiento) return;
+      var dd = r.vs.d;
+      var valor = (Number(r.p.costo)||0) * (Number(r.p.stock)||0);
+      if(dd < 0){ vencido.n++; vencido.valor += valor; return; }
+      var v = new Date(r.p.vencimiento + 'T00:00:00');
+      var diffMonths = (v.getFullYear()-today.getFullYear())*12 + (v.getMonth()-today.getMonth());
+      if(diffMonths >= 0 && diffMonths < 12){ months[diffMonths].n++; months[diffMonths].valor += valor; }
+    });
+    return { vencido: vencido, months: months };
+  }
+  function monthBucketKey(r){
+    if(!r.p.vencimiento) return null;
+    var today = startOfToday();
+    if(r.vs.d < 0) return 'vencido';
+    var v = new Date(r.p.vencimiento + 'T00:00:00');
+    var diffMonths = (v.getFullYear()-today.getFullYear())*12 + (v.getMonth()-today.getMonth());
+    if(diffMonths >= 0 && diffMonths < 12) return diffMonths;
+    return null;
+  }
+  function monthFilterLabel(key, buckets){
+    if(key === 'vencido') return 'Vencido';
+    var m = buckets.months[key];
+    if(!m) return '';
+    return MESES_CORTOS[m.month] + ' de ' + m.year;
+  }
+
+  function claseMap(){
+    var items = state.productos.map(function(p){
+      return { id: p.id, valor: (Number(p.costo)||0) * (Number(p.stock)||0) };
+    });
+    var total = items.reduce(function(s,it){ return s + it.valor; }, 0);
+    var sorted = items.slice().sort(function(a,b){ return b.valor - a.valor; });
+    var map = {};
+    var cum = 0;
+    sorted.forEach(function(it){
+      cum += it.valor;
+      var pct = total > 0 ? (cum / total * 100) : 0;
+      map[it.id] = pct <= 80 ? 'A' : (pct <= 95 ? 'B' : 'C');
+    });
+    return map;
+  }
+
+  function top10Ids(){
+    var items = state.productos.map(function(p){
+      return { id: p.id, valor: (Number(p.costo)||0) * (Number(p.stock)||0) };
+    });
+    var sorted = items.slice().sort(function(a,b){ return b.valor - a.valor; });
+    var ids = {};
+    sorted.slice(0, 10).forEach(function(it){ ids[it.id] = true; });
+    return ids;
+  }
+
+  function computed(){
+    var cm = claseMap();
+    var t10 = top10Ids();
+    return state.productos.map(function(p){
+      return { p:p, vs:vencStatus(p.vencimiento), ss:stockStatus(p), clase: cm[p.id], isTop10: !!t10[p.id] };
+    });
+  }
+
+  function toast(msg){
+    var el = document.querySelector('.toast');
+    if(el) el.remove();
+    el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function(){ if(el && el.parentNode) el.parentNode.removeChild(el); }, 4200);
+  }
+
+
+  function searchPredicate(r, q){
+    return (r.p.nombre + ' ' + r.p.laboratorio + ' ' + r.p.lote).toLowerCase().indexOf(q) !== -1;
+  }
+
+  function sortRows(rows){
+    var dir = ui.sortDir === 'desc' ? -1 : 1;
+    var f = ui.sortField;
+    rows.sort(function(a,b){
+      if(f === 'nombre') return dir * a.p.nombre.localeCompare(b.p.nombre, 'es');
+      if(f === 'tipo') return dir * tipoOf(a.p).localeCompare(tipoOf(b.p), 'es');
+      if(f === 'ubicacion') return dir * String(a.p.ubicacion||'').localeCompare(String(b.p.ubicacion||''), 'es');
+      if(f === 'stock') return dir * (a.p.stock - b.p.stock);
+      if(f === 'costo') return dir * (a.p.costo - b.p.costo);
+      if(f === 'precioVenta') return dir * (a.p.precioVenta - b.p.precioVenta);
+      if(f === 'valor') return dir * ((a.p.costo*a.p.stock) - (b.p.costo*b.p.stock));
+      var av = a.vs.d === null ? Infinity : a.vs.d, bv = b.vs.d === null ? Infinity : b.vs.d;
+      return dir * (av - bv);
+    });
+    return rows;
+  }
+
+  function filteredRows(){
+    var rows = computed();
+    var q = ui.search.trim().toLowerCase();
+    if(q) rows = rows.filter(function(r){ return searchPredicate(r, q); });
+    if(ui.claseFilter){
+      rows = rows.filter(function(r){ return r.clase === ui.claseFilter; });
+    }
+    if(ui.top10Filter){
+      rows = rows.filter(function(r){ return r.isTop10; });
+    }
+    if(ui.provFilter){
+      rows = rows.filter(function(r){ return (r.p.laboratorio || 'Sin laboratorio') === ui.provFilter; });
+    }
+    if(ui.tipoFilter){
+      rows = rows.filter(function(r){ return tipoOf(r.p) === ui.tipoFilter; });
+    }
+    if(ui.filter === 'vencer'){
+      rows = rows.filter(function(r){ return r.vs.key === 'critico' || r.vs.key === 'alerta' || r.vs.key === 'vencido'; });
+    } else if(ui.filter === 'vencidos'){
+      rows = rows.filter(function(r){ return r.vs.key === 'vencido'; });
+    } else if(ui.filter === 'stock'){
+      rows = rows.filter(function(r){ return r.ss !== 'ok'; });
+    }
+    return sortRows(rows);
+  }
+
+  function kpis(){
+    var rows = computed();
+    var total = rows.length;
+    var valor = rows.reduce(function(s,r){ return s + (r.p.costo * r.p.stock); }, 0);
+    var porVencer = rows.filter(function(r){ return r.vs.key !== 'ok' && r.vs.key !== 'sinvencer'; });
+    var stockBajo = rows.filter(function(r){ return r.ss !== 'ok'; });
+    var vencTone = porVencer.some(function(r){ return r.vs.key === 'vencido' || r.vs.key === 'critico'; }) ? 'critical' : (porVencer.length ? 'warning' : 'good');
+    var stockTone = stockBajo.some(function(r){ return r.ss === 'critico'; }) ? 'critical' : (stockBajo.length ? 'warning' : 'good');
+    var topCost = null;
+    rows.forEach(function(r){ if(!topCost || Number(r.p.costo) > Number(topCost.p.costo)) topCost = r; });
+    var buckets12m = monthlyExpiryBuckets(rows);
+    var valorRiesgo12m = buckets12m.vencido.valor + buckets12m.months.reduce(function(s,b){ return s + b.valor; }, 0);
+    var nRiesgo12m = buckets12m.vencido.n + buckets12m.months.reduce(function(s,b){ return s + b.n; }, 0);
+    return { total: total, valor: valor, porVencer: porVencer.length, stockBajo: stockBajo.length, vencTone: vencTone, stockTone: stockTone, topCost: topCost, valorRiesgo12m: valorRiesgo12m, nRiesgo12m: nRiesgo12m };
+  }
+
+  function renderKpisStock(k){
+    return '' +
+    '<div class="kpis-2">' +
+      '<div class="kpi"><div class="kpi-label">Artículos</div><div class="kpi-value mono">' + k.total + '</div><div class="kpi-sub">en el piloto</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Valor de inventario</div><div class="kpi-value mono">' + fmtMoney(k.valor) + '</div><div class="kpi-sub">costo × stock actual</div></div>' +
+    '</div>';
+  }
+
+  function renderKpisVencimientos(k){
+    return '' +
+    '<div class="kpis-2">' +
+      '<div class="kpi tone-' + k.vencTone + '"><div class="kpi-label">Por vencer (foco inmediato)</div><div class="kpi-value mono">' + k.porVencer + '</div><div class="kpi-sub">vencidos o ≤ 90 días</div></div>' +
+      '<div class="kpi tone-warning"><div class="kpi-label">Valor en riesgo (12 meses)</div><div class="kpi-value mono">' + fmtMoney(k.valorRiesgo12m) + '</div><div class="kpi-sub">' + k.nRiesgo12m + ' artículo' + (k.nRiesgo12m === 1 ? '' : 's') + ' vencido' + (k.nRiesgo12m === 1 ? '' : 's') + ' o que vencen dentro del año</div></div>' +
+    '</div>';
+  }
+
+  function renderKpisFoco(k){
+    var spotlight = '';
+    if(k.topCost){
+      var p = k.topCost.p;
+      spotlight = '' +
+      '<div class="kpi">' +
+        '<div class="kpi-label">Artículo más caro (por unidad)</div>' +
+        '<div class="kpi-spotlight-name" style="font-size:.92rem;">' + esc(p.nombre) + '</div>' +
+        '<div class="kpi-value mono">' + fmtMoney(p.costo) + '</div>' +
+        '<div class="kpi-sub">' + esc(p.laboratorio) + ' · Lote ' + esc(p.lote) + '</div>' +
+      '</div>';
+    }
+    return '' +
+    '<div class="kpis-2">' +
+      '<div class="kpi tone-' + k.stockTone + '"><div class="kpi-label">Stock bajo</div><div class="kpi-value mono">' + k.stockBajo + '</div><div class="kpi-sub">bajo el mínimo definido</div></div>' +
+      spotlight +
+    '</div>';
+  }
+
+  function panelPager(pageKey, totalCount, totalPages, pageSize){
+    var page = ui[pageKey];
+    var from = (page - 1) * pageSize + 1;
+    var to = Math.min(page * pageSize, totalCount);
+    return '' +
+    '<div class="panel-pager">' +
+      '<span class="panel-pager-info">' + from + '–' + to + ' de ' + totalCount + '</span>' +
+      '<div class="panel-pager-controls">' +
+        '<button type="button" class="btn btn-sm" data-panel-prev="' + pageKey + '"' + (page <= 1 ? ' disabled' : '') + '>‹</button>' +
+        '<span class="panel-pager-page">' + page + ' / ' + totalPages + '</span>' +
+        '<button type="button" class="btn btn-sm" data-panel-next="' + pageKey + '"' + (page >= totalPages ? ' disabled' : '') + '>›</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function applyGlobalFilters(rows){
+    if(ui.claseFilter) rows = rows.filter(function(r){ return r.clase === ui.claseFilter; });
+    if(ui.top10Filter) rows = rows.filter(function(r){ return r.isTop10; });
+    if(ui.provFilter) rows = rows.filter(function(r){ return (r.p.laboratorio || 'Sin laboratorio') === ui.provFilter; });
+    if(ui.tipoFilter) rows = rows.filter(function(r){ return tipoOf(r.p) === ui.tipoFilter; });
+    return rows;
+  }
+
+  function renderStockBajoPanel(){
+    var rows = applyGlobalFilters(computed());
+    var q = ui.search.trim().toLowerCase();
+    var stockAll = rows.filter(function(r){ return r.ss !== 'ok'; });
+    var stock = (q ? stockAll.filter(function(r){ return searchPredicate(r,q); }) : stockAll)
+      .sort(function(a,b){ return (a.p.stock - a.p.stockMinimo) - (b.p.stock - b.p.stockMinimo); });
+
+    var body;
+    if(!stock.length){
+      body = (q && stockAll.length) ?
+        '<div class="panel-empty" style="color:var(--muted);">Sin coincidencias para “' + esc(ui.search.trim()) + '”</div>' :
+        '<div class="panel-empty">✓ Ningún artículo con stock bajo</div>';
+    } else {
+      var totalPages = Math.max(1, Math.ceil(stock.length / PANEL_PAGE_SIZE));
+      if(ui.stockPage > totalPages) ui.stockPage = totalPages;
+      if(ui.stockPage < 1) ui.stockPage = 1;
+      var startIdx = (ui.stockPage - 1) * PANEL_PAGE_SIZE;
+      var shown = stock.slice(startIdx, startIdx + PANEL_PAGE_SIZE);
+      var html = shown.map(function(r){
+        return '<div class="alert-row"><div><div class="alert-name">' + esc(r.p.nombre) + '</div><div class="alert-meta">' + esc(r.p.ubicacion) + '</div></div><span class="' + stockPillClass(r.ss) + '">' + stockLabel(r.p) + '</span></div>';
+      }).join('');
+      var pager = totalPages > 1 ? panelPager('stockPage', stock.length, totalPages, PANEL_PAGE_SIZE) : '';
+      body = html + pager;
+    }
+
+    return '<div class="panel"><h2>Stock bajo</h2><div class="panel-sub">Por debajo de la cantidad mínima definida</div>' + body + '</div>';
+  }
+
+  var INFO_COPY = {
+    top10: 'Son los 10 artículos puntuales (no una categoría) con más dinero invertido en stock, calculado como costo × cantidad.',
+    proveedor: 'Muestra cuánto valor de tu stock corresponde a cada laboratorio, para ver de cuáles proveedores dependés más en plata.',
+    abc: 'Es el principio de Pareto aplicado al inventario: Clase A concentra el 80% del valor, Clase B el siguiente 15% y Clase C el 5% restante repartido en muchos artículos.'
+  };
+
+  function renderVencimientos365Panel(){
+    var rows = applyGlobalFilters(computed());
+    var q = ui.search.trim().toLowerCase();
+    var upcomingAll = rows.filter(function(r){ return r.vs.d !== null && r.vs.d <= 365; });
+    if(ui.monthFilter !== null){
+      upcomingAll = upcomingAll.filter(function(r){ return monthBucketKey(r) === ui.monthFilter; });
+    }
+    var upcoming = (q ? upcomingAll.filter(function(r){ return searchPredicate(r,q); }) : upcomingAll)
+      .sort(function(a,b){ return a.vs.d - b.vs.d; });
+
+    var body;
+    if(!upcoming.length){
+      body = (q && upcomingAll.length) ?
+        '<div class="panel-empty" style="color:var(--muted);">Sin coincidencias para “' + esc(ui.search.trim()) + '”</div>' :
+        '<div class="panel-empty">✓ ' + (ui.monthFilter !== null ? 'Ningún artículo vence en ese período' : 'Sin vencimientos en los próximos 12 meses') + '</div>';
+    } else {
+      var totalPages = Math.max(1, Math.ceil(upcoming.length / PANEL_PAGE_SIZE));
+      if(ui.vencPage > totalPages) ui.vencPage = totalPages;
+      if(ui.vencPage < 1) ui.vencPage = 1;
+      var startIdx = (ui.vencPage - 1) * PANEL_PAGE_SIZE;
+      var shown = upcoming.slice(startIdx, startIdx + PANEL_PAGE_SIZE);
+      var html = shown.map(function(r){
+        return '' +
+        '<div class="alert-row">' +
+          '<div><div class="alert-name">' + esc(r.p.nombre) + '</div><div class="alert-meta">' + esc(r.p.laboratorio) + ' · Lote ' + esc(r.p.lote) + ' · ' + esc(r.p.ubicacion) + '</div></div>' +
+          '<div style="text-align:right;">' +
+            '<span class="' + vencPillClass(r.vs) + '">' + fmtDate(r.p.vencimiento) + '</span>' +
+            '<div class="alert-meta" style="margin-top:3px;">' + monthsDaysLabel(r.vs.d) + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+      var pager = totalPages > 1 ? panelPager('vencPage', upcoming.length, totalPages, PANEL_PAGE_SIZE) : '';
+      body = html + pager;
+    }
+
+    var monthChip = '';
+    if(ui.monthFilter !== null){
+      var buckets = monthlyExpiryBuckets(applyGlobalFilters(computed()));
+      monthChip = '<button type="button" class="chip" aria-pressed="true" data-clear-month title="Quitar filtro de mes" style="margin-bottom:10px;">' + esc(monthFilterLabel(ui.monthFilter, buckets)) + ' ✕</button>';
+    }
+    var heading = ui.monthFilter !== null ? 'Vencimientos — ' + esc((function(){ var b = monthlyExpiryBuckets(applyGlobalFilters(computed())); return monthFilterLabel(ui.monthFilter, b); })()) : 'Vencimientos — próximos 365 días';
+    var sub = ui.monthFilter !== null ? 'Artículos que vencen en ese período. Tocá la ✕ para volver a ver los 12 meses.' : 'Todo lo que vence este año, ordenado por cercanía, con los meses y días que faltan para cada uno.';
+    return '<div class="panel" id="venc365-panel"><h2>' + heading + '</h2><div class="panel-sub">' + sub + '</div>' + monthChip + body + '</div>';
+  }
+
+  function renderVencimientosChart(){
+    var rows = applyGlobalFilters(computed());
+    var b = monthlyExpiryBuckets(rows);
+    var allVals = [b.vencido.valor].concat(b.months.map(function(m){ return m.valor; }));
+    var maxValor = Math.max.apply(null, allVals.concat([1]));
+    var totalValor = b.vencido.valor + b.months.reduce(function(s,m){ return s + m.valor; }, 0);
+    var totalN = b.vencido.n + b.months.reduce(function(s,m){ return s + m.n; }, 0);
+
+    function col(key, label, n, valor, tone, title){
+      var h = maxValor > 0 ? Math.max(3, Math.round(valor / maxValor * 100)) : 3;
+      var active = ui.monthFilter === key;
+      return '' +
+      '<button type="button" class="mchart-col' + (active ? ' mchart-col-active' : '') + '" data-month-filter="' + key + '" aria-pressed="' + active + '" title="' + esc(title) + (n ? ' · Tocá para ' + (active ? 'quitar el filtro' : 'ver estos artículos') : '') + '">' +
+        '<div class="mchart-bar-wrap"><div class="mchart-bar" style="height:' + h + '%;background:var(' + tone + ');"></div></div>' +
+        '<div class="mchart-label">' + esc(label) + '<br><span class="mono">' + (n || '—') + '</span></div>' +
+      '</button>';
+    }
+
+    var cols = col('vencido', 'Vencido', b.vencido.n, b.vencido.valor, '--expired', 'Vencido: ' + b.vencido.n + ' artículo(s) · ' + fmtMoney(b.vencido.valor)) +
+      b.months.map(function(m, i){
+        var label = MESES_CORTOS[m.month] + ' \'' + String(m.year).slice(2);
+        var tone = m.n === 0 ? '--surface-2' : (m.valor / maxValor > 0.55 ? '--critical' : (m.valor / maxValor > 0.22 ? '--warning' : '--good'));
+        return col(i, label, m.n, m.valor, tone, label + ': ' + m.n + ' artículo(s) · ' + fmtMoney(m.valor));
+      }).join('');
+
+    return '' +
+    '<div class="panel">' +
+      '<h2>Alerta mensual de vencimientos</h2>' +
+      '<div class="panel-sub">Valor de stock que vence cada mes durante los próximos 12 meses. Sirve para anticipar promociones o descuentos: el precio de venta de un medicamento suele caer a medida que se acerca su vencimiento. Tocá una barra para ver esos artículos en el panel de arriba.</div>' +
+      '<div class="mchart">' + cols + '</div>' +
+      '<div class="venc-callout" style="margin-top:10px;">En los próximos 12 meses (incluyendo lo ya vencido) hay <b>' + totalN + '</b> artículo' + (totalN === 1 ? '' : 's') + ' por un valor de <b>' + fmtMoney(totalValor) + '</b>.</div>' +
+    '</div>';
+  }
+
+  function panelHeading(key, text){
+    var open = ui.infoOpen === key;
+    return '' +
+    '<div class="panel-title-row">' +
+      '<h2>' + text + '</h2>' +
+      '<button type="button" class="info-btn" data-info-btn="' + key + '" aria-expanded="' + open + '" aria-label="Qué significa: ' + esc(text) + '">?</button>' +
+      (open ? '<div class="info-pop" role="tooltip">' + esc(INFO_COPY[key]) + '</div>' : '') +
+    '</div>';
+  }
+
+  function concentracionMetrics(){
+    var cm = claseMap();
+    var items = state.productos.map(function(p){
+      return { p:p, valor: (Number(p.costo)||0) * (Number(p.stock)||0), vs: vencStatus(p.vencimiento), clase: cm[p.id] };
+    });
+    var totalValor = items.reduce(function(s,it){ return s + it.valor; }, 0);
+    var byValorDesc = items.slice().sort(function(a,b){ return b.valor - a.valor; });
+
+    var classCount = { A:0, B:0, C:0 }, classValor = { A:0, B:0, C:0 };
+    items.forEach(function(it){ classCount[it.clase]++; classValor[it.clase] += it.valor; });
+
+    var cum = 0;
+    var paretoTop = [];
+    byValorDesc.forEach(function(it, i){
+      cum += it.valor;
+      var cumPct = totalValor > 0 ? (cum / totalValor * 100) : 0;
+      if(i < 10) paretoTop.push({ id: it.p.id, nombre: it.p.nombre, laboratorio: it.p.laboratorio, valor: it.valor, pct: totalValor>0 ? it.valor/totalValor*100 : 0, cumPct: cumPct });
+    });
+
+    var labMap = {};
+    items.forEach(function(it){
+      var l = it.p.laboratorio || 'Sin laboratorio';
+      if(!labMap[l]) labMap[l] = { laboratorio:l, n:0, valor:0 };
+      labMap[l].n++; labMap[l].valor += it.valor;
+    });
+    var labsAll = Object.keys(labMap).map(function(k){ return labMap[k]; }).sort(function(a,b){ return b.valor - a.valor; });
+
+    var top10Pct = paretoTop.length ? paretoTop[paretoTop.length-1].cumPct : 0;
+
+    return {
+      totalValor: totalValor, n: items.length, paretoTop: paretoTop,
+      classCount: classCount, classValor: classValor,
+      labsAll: labsAll, top10Pct: top10Pct, topLab: labsAll[0]
+    };
+  }
+
+  function renderStockConcentration(){
+    var m = concentracionMetrics();
+    if(m.totalValor <= 0 || m.n === 0) return '';
+
+    var top10Active = !!ui.top10Filter;
+    var provActive = !!ui.provFilter && !!m.topLab && ui.provFilter === m.topLab.laboratorio;
+    var kpisHtml = '' +
+    '<div class="kpis-2">' +
+      '<button type="button" class="kpi kpi-clickable' + (top10Active ? ' kpi-clickable-active' : '') + '" data-top10-filter="1">' +
+        '<div class="kpi-label">Concentración top 10</div>' +
+        '<div class="kpi-value mono">' + fmtPct1(m.top10Pct) + '</div>' +
+        '<div class="kpi-sub">Es lo que representan, en valor, los 10 artículos más caros de tu stock.</div>' +
+        '<div class="kpi-btn-hint">' + (top10Active ? 'Filtrando la tabla de arriba · tocá para quitar' : 'Tocá para ver estos artículos') + '</div>' +
+      '</button>' +
+      (m.topLab ?
+      '<button type="button" class="kpi kpi-clickable' + (provActive ? ' kpi-clickable-active' : '') + '" data-prov-filter="' + esc(m.topLab.laboratorio) + '">' +
+        '<div class="kpi-label">Proveedor líder</div>' +
+        '<div class="kpi-value mono">' + fmtPct1(m.topLab.valor/m.totalValor*100) + '</div>' +
+        '<div class="kpi-sub">' + esc(m.topLab.laboratorio) + ' · ' + m.topLab.n + ' artículos</div>' +
+        '<div class="kpi-btn-hint">' + (provActive ? 'Filtrando la tabla de arriba · tocá para quitar' : 'Tocá para ver estos artículos') + '</div>' +
+      '</button>'
+      : '<div class="kpi"><div class="kpi-label">Proveedor líder</div><div class="kpi-value mono">—</div><div class="kpi-sub">—</div></div>') +
+    '</div>';
+
+    var paretoRows = m.paretoTop.map(function(it, i){
+      return '' +
+      '<div class="rank-row">' +
+        '<div class="rank-num">#' + (i+1) + '</div>' +
+        '<div class="rank-main">' +
+          '<div class="rank-name">' + esc(it.nombre) + '</div>' +
+          '<div class="rank-meta">' + esc(it.laboratorio) + '</div>' +
+          '<div class="rank-bar"><span style="width:' + Math.max(2, it.pct/m.paretoTop[0].pct*100) + '%;"></span></div>' +
+        '</div>' +
+        '<div>' +
+          '<div class="rank-value">' + fmtMoney(it.valor) + '</div>' +
+          '<div class="rank-sub">' + fmtPct1(it.pct) + ' · acum. ' + fmtPct1(it.cumPct) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var PROV_PAGE_SIZE = 10;
+    var provTotalPages = Math.max(1, Math.ceil(m.labsAll.length / PROV_PAGE_SIZE));
+    if(ui.provPage > provTotalPages) ui.provPage = provTotalPages;
+    if(ui.provPage < 1) ui.provPage = 1;
+    var provStartIdx = (ui.provPage - 1) * PROV_PAGE_SIZE;
+    var provShown = m.labsAll.slice(provStartIdx, provStartIdx + PROV_PAGE_SIZE);
+    var maxLabValor = m.labsAll.length ? m.labsAll[0].valor : 1;
+    var provRowsList = provShown.map(function(l){
+      var active = ui.provFilter === l.laboratorio;
+      return '' +
+      '<button type="button" class="rank-row rank-row-clickable' + (active ? ' rank-row-active' : '') + '" data-prov-filter="' + esc(l.laboratorio) + '" title="' + (active ? 'Quitar filtro' : 'Ver los artículos de ' + esc(l.laboratorio) + ' en la tabla de arriba') + '">' +
+        '<div class="rank-main">' +
+          '<div class="rank-name">' + esc(l.laboratorio) + '</div>' +
+          '<div class="rank-meta">' + l.n + ' artículo' + (l.n === 1 ? '' : 's') + '</div>' +
+          '<div class="rank-bar"><span style="width:' + Math.max(2, l.valor/maxLabValor*100) + '%;"></span></div>' +
+        '</div>' +
+        '<div>' +
+          '<div class="rank-value">' + fmtMoney(l.valor) + '</div>' +
+          '<div class="rank-sub">' + fmtPct1(l.valor/m.totalValor*100) + ' del total</div>' +
+        '</div>' +
+      '</button>';
+    }).join('');
+    var provRows = provRowsList + (provTotalPages > 1 ? panelPager('provPage', m.labsAll.length, provTotalPages, PROV_PAGE_SIZE) : '');
+
+    return '' +
+    '<div class="concentracion-head">' +
+      '<h2>Composición del inventario</h2>' +
+      '<div class="subtext" style="max-width:64ch;">Cómo se reparte el valor del stock entre artículos y proveedores, y qué tan concentrado está según el principio de Pareto.</div>' +
+    '</div>' +
+    kpisHtml +
+    '<div class="panels">' +
+      '<div class="panel">' + panelHeading('top10', '¿Dónde está concentrado el valor?') + '<div class="panel-sub">Los 10 artículos individuales (no un rubro ni categoría) que, por sí solos, más valor representan en el stock (costo × cantidad).</div>' + paretoRows + '</div>' +
+      '<div class="panel">' + panelHeading('proveedor', 'Concentración por proveedor') + '<div class="panel-sub">Valor de stock por laboratorio: cuánto le compramos, en plata, a cada uno.</div>' + provRows + '</div>' +
+    '</div>';
+  }
+
+  function searchIconSvg(){
+    return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+  }
+
+  function renderSuggestBox(suffix){
+    if(ui.searchFocusId !== suffix) return '';
+    var q = ui.search.trim().toLowerCase();
+    if(!q) return '';
+    var matches = computed().filter(function(r){ return searchPredicate(r, q); }).slice(0, 6);
+    if(!matches.length) return '<div class="search-suggest"><div class="suggest-empty">Sin coincidencias para “' + esc(ui.search.trim()) + '”</div></div>';
+    var items = matches.map(function(r){
+      return '<button type="button" class="suggest-item" data-suggest="' + esc(r.p.nombre) + '"><span class="suggest-name">' + esc(r.p.nombre) + '</span><span class="suggest-meta">' + esc(r.p.laboratorio) + ' · ' + esc(r.p.ubicacion) + '</span></button>';
+    }).join('');
+    return '<div class="search-suggest">' + items + '</div>';
+  }
+
+  function renderSearchBox(suffix){
+    return '' +
+    '<div class="search">' +
+      searchIconSvg() +
+      '<input id="search-input-' + suffix + '" data-search-id="' + suffix + '" type="text" placeholder="Buscar por nombre, laboratorio o lote" value="' + esc(ui.search) + '" autocomplete="off">' +
+      renderSuggestBox(suffix) +
+    '</div>';
+  }
+
+  function renderLabSelect(){
+    var labs = {};
+    state.productos.forEach(function(p){ labs[p.laboratorio || 'Sin laboratorio'] = true; });
+    var options = Object.keys(labs).sort(function(a,b){ return a.localeCompare(b,'es'); }).map(function(l){
+      return '<option value="' + esc(l) + '"' + (ui.provFilter === l ? ' selected' : '') + '>' + esc(l) + '</option>';
+    }).join('');
+    return '<select class="select" id="lab-select" title="Filtrar por laboratorio"><option value="">Todos los laboratorios</option>' + options + '</select>';
+  }
+
+  function renderTipoSelect(){
+    var tipos = {};
+    state.productos.forEach(function(p){ tipos[tipoOf(p)] = true; });
+    var options = Object.keys(tipos).sort(function(a,b){ return a.localeCompare(b,'es'); }).map(function(t){
+      return '<option value="' + esc(t) + '"' + (ui.tipoFilter === t ? ' selected' : '') + '>' + esc(t) + '</option>';
+    }).join('');
+    return '<select class="select" id="tipo-select" title="Filtrar por tipo de producto (Medicamento / Descartable, según IVA)"><option value="">Todos los tipos</option>' + options + '</select>';
+  }
+
+  function renderToolbar(){
+    var chips = [
+      ['todos','Todos'], ['vencer','Por vencer'], ['vencidos','Vencidos'], ['stock','Stock bajo']
+    ].map(function(c){
+      return '<button class="chip" data-filter="' + c[0] + '" aria-pressed="' + (ui.filter === c[0]) + '">' + c[1] + '</button>';
+    }).join('');
+    var claseChip = ui.claseFilter ? '<button type="button" class="chip" aria-pressed="true" data-clear-clase title="Quitar filtro de clase">Clase ' + esc(ui.claseFilter) + ' ✕</button>' : '';
+    var top10Chip = ui.top10Filter ? '<button type="button" class="chip" aria-pressed="true" data-clear-top10 title="Quitar filtro de top 10">Top 10 ✕</button>' : '';
+    var provChip = ui.provFilter ? '<button type="button" class="chip" aria-pressed="true" data-clear-prov title="Quitar filtro de proveedor">' + esc(ui.provFilter) + ' ✕</button>' : '';
+    var tipoChip = ui.tipoFilter ? '<button type="button" class="chip" aria-pressed="true" data-clear-tipo title="Quitar filtro de tipo">' + esc(ui.tipoFilter) + ' ✕</button>' : '';
+    return '' +
+    '<div class="toolbar">' +
+      '<div class="chips">' + chips + claseChip + top10Chip + provChip + tipoChip + '</div>' +
+      '<div class="toolbar-right">' +
+        renderLabSelect() +
+        renderTipoSelect() +
+        renderSearchBox('toolbar') +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderPager(totalCount, totalPages){
+    var from = (ui.page - 1) * PAGE_SIZE + 1;
+    var to = Math.min(ui.page * PAGE_SIZE, totalCount);
+    return '' +
+    '<div class="pager">' +
+      '<div class="pager-info">Mostrando ' + from + '–' + to + ' de ' + totalCount + '</div>' +
+      '<div class="pager-controls">' +
+        '<button type="button" class="btn btn-sm" id="pager-prev"' + (ui.page <= 1 ? ' disabled' : '') + '>‹ Anterior</button>' +
+        '<span class="pager-page">Página ' + ui.page + ' de ' + totalPages + '</span>' +
+        '<button type="button" class="btn btn-sm" id="pager-next"' + (ui.page >= totalPages ? ' disabled' : '') + '>Siguiente ›</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderTable(){
+    var allRows = filteredRows();
+    if(!allRows.length){
+      return '<div class="table-wrap"><div class="empty-state">No hay artículos que coincidan con este filtro o búsqueda.</div></div>';
+    }
+    var totalPages = Math.max(1, Math.ceil(allRows.length / PAGE_SIZE));
+    if(ui.page > totalPages) ui.page = totalPages;
+    if(ui.page < 1) ui.page = 1;
+    var startIdx = (ui.page - 1) * PAGE_SIZE;
+    var rows = allRows.slice(startIdx, startIdx + PAGE_SIZE);
+    var head = '<thead><tr>' +
+      COLUMNS.map(function(c){
+        var active = ui.sortField === c.key;
+        var arrow = active ? (ui.sortDir === 'desc' ? '↓' : '↑') : '↕';
+        return '<th class="' + c.align + '"><button type="button" class="th-sort" data-sort="' + c.key + '">' + c.label + '<span class="sort-arrow' + (active ? ' active' : '') + '">' + arrow + '</span></button></th>';
+      }).join('') +
+      '</tr></thead>';
+    var body = rows.map(function(r){
+      var p = r.p, vs = r.vs, ss = r.ss;
+      var min = Number(p.stockMinimo) || 0;
+      var pct = min > 0 ? Math.max(0, Math.min(100, Math.round((p.stock / (min * 1.5)) * 100))) : 100;
+      var barColor = ss === 'critico' ? 'var(--critical)' : (ss === 'alerta' ? 'var(--warning)' : 'var(--good)');
+      return '<tr>' +
+        '<td><div class="prod-name">' + esc(p.nombre) + '</div><div class="prod-meta">' + esc(p.laboratorio) + ' · Lote ' + esc(p.lote) + '</div></td>' +
+        '<td><span class="pill pill-neutral">' + esc(tipoOf(p)) + '</span></td>' +
+        '<td><span class="' + vencPillClass(vs) + '">' + vencLabel(vs) + '</span><div class="prod-meta">' + fmtDate(p.vencimiento) + '</div></td>' +
+        '<td><div class="stockcell"><span class="' + stockPillClass(ss) + '">' + stockLabel(p) + '</span><div class="stockbar"><span style="width:' + pct + '%;background:' + barColor + ';"></span></div></div></td>' +
+        '<td>' + esc(p.ubicacion) + '</td>' +
+        '<td class="right num">' + fmtMoney(p.costo) + '</td>' +
+        '<td class="right num">' + fmtMoneyOrDash(p.precioVenta) + '</td>' +
+        '<td class="right num">' + fmtMoney(p.costo * p.stock) + '</td>' +
+        '</tr>';
+    }).join('');
+    var pager = totalPages > 1 ? renderPager(allRows.length, totalPages) : '';
+    return '<div class="table-wrap"><table>' + head + '<tbody>' + body + '</tbody></table></div>' + pager;
+  }
+
+  function pdfIconSvg(){
+    return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M4 21h16"></path></svg>';
+  }
+
+  var FILTER_LABELS = { vencer:'Por vencer', vencidos:'Vencidos', stock:'Stock bajo' };
+
+  function downloadPdf(){
+    if(!(window.jspdf && window.jspdf.jsPDF)){
+      toast('El generador de PDF todavía está cargando. Probá de nuevo en unos segundos.');
+      return;
+    }
+    var rows = filteredRows();
+    if(!rows.length){
+      toast('No hay artículos para exportar con este filtro o búsqueda.');
+      return;
+    }
+    var doc = new window.jspdf.jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
+    var todayIso = new Date().toISOString().slice(0,10);
+    var pageWidth = doc.internal.pageSize.getWidth();
+    var pageHeight = doc.internal.pageSize.getHeight();
+    var margin = 32;
+
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(16);
+    doc.setTextColor(30,42,56);
+    doc.text('Gestión de Inventario — Demo', margin, 38);
+
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90,102,112);
+    var scopeBits = [];
+    if(ui.search.trim()) scopeBits.push('búsqueda: "' + ui.search.trim() + '"');
+    if(ui.filter !== 'todos') scopeBits.push('filtro: ' + (FILTER_LABELS[ui.filter] || ui.filter));
+    if(ui.claseFilter) scopeBits.push('clase: ' + ui.claseFilter);
+    if(ui.top10Filter) scopeBits.push('top 10 por valor');
+    if(ui.provFilter) scopeBits.push('proveedor: ' + ui.provFilter);
+    if(ui.tipoFilter) scopeBits.push('tipo: ' + ui.tipoFilter);
+    var scopeNote = scopeBits.length ? scopeBits.join(' · ') : 'todos los artículos';
+    doc.text('Generado el ' + fmtDate(todayIso) + ' · ' + scopeNote + ' · ' + rows.length + ' artículo' + (rows.length === 1 ? '' : 's'), margin, 53);
+
+    var k = kpis();
+    doc.text('Valor de inventario (todo el inventario): ' + fmtMoney(k.valor) + '   ·   Por vencer: ' + k.porVencer + '   ·   Stock bajo: ' + k.stockBajo, margin, 67);
+
+    var head = [['Artículo','Tipo','Laboratorio / Lote','Vencimiento','Stock','Mín.','Ubicación','Costo','Precio venta','Valor en stock']];
+    var body = rows.map(function(r){
+      var p = r.p;
+      return [
+        p.nombre,
+        tipoOf(p),
+        p.laboratorio + (p.lote ? (' · ' + p.lote) : ''),
+        vencLabel(r.vs) + (p.vencimiento ? ' (' + fmtDate(p.vencimiento) + ')' : ''),
+        String(p.stock),
+        (Number(p.stockMinimo) > 0 ? String(p.stockMinimo) : '—'),
+        p.ubicacion || '—',
+        fmtMoney(p.costo),
+        fmtMoneyOrDash(p.precioVenta),
+        fmtMoney(p.costo * p.stock)
+      ];
+    });
+
+    var vencColors = { vencido:[122,35,35], critico:[178,58,52], alerta:[180,118,31], ok:[47,125,82], sinvencer:[91,102,112] };
+    var stockColors = { critico:[178,58,52], alerta:[180,118,31], ok:[47,125,82] };
+
+    doc.autoTable({
+      head: head,
+      body: body,
+      startY: 82,
+      margin: { left: margin, right: margin },
+      styles: { font:'helvetica', fontSize:8.5, cellPadding:5, textColor:[30,42,56], lineColor:[215,220,218], lineWidth:0.5, overflow:'linebreak' },
+      headStyles: { fillColor:[43,95,115], textColor:255, fontStyle:'bold' },
+      alternateRowStyles: { fillColor:[245,246,244] },
+      columnStyles: { 4:{ halign:'right' }, 5:{ halign:'right' }, 7:{ halign:'right' }, 8:{ halign:'right' }, 9:{ halign:'right' } },
+      didParseCell: function(data){
+        if(data.section !== 'body') return;
+        var r = rows[data.row.index];
+        if(!r) return;
+        if(data.column.index === 3){
+          data.cell.styles.textColor = vencColors[r.vs.key] || vencColors.ok;
+          data.cell.styles.fontStyle = 'bold';
+        }
+        if(data.column.index === 4){
+          data.cell.styles.textColor = stockColors[r.ss] || stockColors.ok;
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+
+    var totalPages = doc.internal.getNumberOfPages();
+    for(var i = 1; i <= totalPages; i++){
+      doc.setPage(i);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(8);
+      doc.setTextColor(90,102,112);
+      doc.text('Página ' + i + ' de ' + totalPages, pageWidth - margin, pageHeight - 14, { align:'right' });
+    }
+
+    var filename = 'inventario-demo-' + todayIso + '.pdf';
+    function run(api){
+      if(!api){ toast('La descarga no está disponible en esta vista.'); return; }
+      api.save({ filename: filename, data: doc.output('blob') }).then(function(){
+        toast('PDF descargado: ' + filename);
+      }).catch(function(err){
+        if(err && err.code === 'declined') return;
+        toast('No se pudo generar la descarga. Probá de nuevo.');
+      });
+    }
+    if(downloadsApi) run(downloadsApi); else downloadsReady.then(run);
+  }
+
+  function xlsIconSvg(){
+    return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M8 8l8 8M16 8l-8 8"></path></svg>';
+  }
+
+  function downloadExcel(){
+    if(!window.XLSX){
+      toast('El generador de Excel todavía está cargando. Probá de nuevo en unos segundos.');
+      return;
+    }
+    var rows = filteredRows();
+    if(!rows.length){
+      toast('No hay artículos para exportar con este filtro o búsqueda.');
+      return;
+    }
+    var todayIso = new Date().toISOString().slice(0,10);
+    var head = ['Artículo','Tipo','Laboratorio','Lote','Vencimiento','Vence en','Stock','Mínimo','Ubicación','Costo','Precio venta','Valor en stock'];
+    var data = rows.map(function(r){
+      var p = r.p;
+      return [
+        p.nombre, tipoOf(p), p.laboratorio || '', p.lote || '',
+        p.vencimiento ? fmtDate(p.vencimiento) : '', vencLabel(r.vs),
+        Number(p.stock) || 0, Number(p.stockMinimo) || 0, p.ubicacion || '',
+        Number(p.costo) || 0, Number(p.precioVenta) || 0, (Number(p.costo)||0) * (Number(p.stock)||0)
+      ];
+    });
+    var ws = window.XLSX.utils.aoa_to_sheet([head].concat(data));
+    ws['!cols'] = [{wch:36},{wch:14},{wch:18},{wch:14},{wch:12},{wch:22},{wch:8},{wch:8},{wch:14},{wch:12},{wch:12},{wch:14}];
+    var wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
+    var wbout = window.XLSX.write(wb, { bookType:'xlsx', type:'array' });
+    var blob = new Blob([wbout], { type:'application/octet-stream' });
+    var filename = 'inventario-demo-' + todayIso + '.xlsx';
+    function run(api){
+      if(!api){ toast('La descarga no está disponible en esta vista.'); return; }
+      api.save({ filename: filename, data: blob }).then(function(){
+        toast('Excel descargado: ' + filename);
+      }).catch(function(err){
+        if(err && err.code === 'declined') return;
+        toast('No se pudo generar la descarga. Probá de nuevo.');
+      });
+    }
+    if(downloadsApi) run(downloadsApi); else downloadsReady.then(run);
+  }
+
+  function renderTabs(k){
+    var tabs = [
+      { key:'stock', label:'STOCK' },
+      { key:'vencimientos', label:'VENCIMIENTOS', badge:k.porVencer },
+      { key:'foco', label:'STOCK CRÍTICO', badge:k.stockBajo }
+    ];
+    return '<div class="tabs" role="tablist">' + tabs.map(function(t){
+      var active = ui.tab === t.key;
+      var badge = (t.badge != null && t.badge > 0) ? '<span class="tab-badge">' + t.badge + '</span>' : '';
+      return '<button type="button" class="tab-btn" role="tab" data-tab="' + t.key + '" aria-selected="' + active + '">' + t.label + badge + '</button>';
+    }).join('') + '</div>';
+  }
+
+  function renderTabContent(k){
+    if(ui.tab === 'vencimientos'){
+      return renderKpisVencimientos(k) + renderVencimientos365Panel() + renderVencimientosChart();
+    }
+    if(ui.tab === 'foco'){
+      return renderKpisFoco(k) + renderStockBajoPanel();
+    }
+    return renderKpisStock(k) + renderToolbar() + renderTable() + renderStockConcentration();
+  }
+
+  function render(){
+    var k = kpis();
+    var html = '' +
+    '<div class="topbar">' +
+      '<div class="topbar-title">' +
+        '<h1>Gestión de Inventario — Demo</h1>' +
+        '<div class="subtext">Última actualización: ' + fmtDate(state.lastUpdated) + ' · Datos ficticios, solo para fines de demostración.</div>' +
+      '</div>' +
+      '<div class="topbar-controls">' +
+        renderSearchBox('top') +
+        '<button class="btn" id="btn-pdf" title="Descargar como PDF lo que está filtrado o buscado (o todo, si no hay filtro)"><span style="display:inline-flex;align-items:center;gap:6px;">' + pdfIconSvg() + 'PDF</span></button>' +
+        '<button class="btn" id="btn-xlsx" title="Descargar como Excel lo que está filtrado o buscado (o todo, si no hay filtro)"><span style="display:inline-flex;align-items:center;gap:6px;">' + xlsIconSvg() + 'Excel</span></button>' +
+      '</div>' +
+    '</div>' +
+    renderTabs(k) +
+    renderTabContent(k);
+
+    document.getElementById('app').innerHTML = html;
+    wire();
+  }
+
+  function wire(){
+    var app = document.getElementById('app');
+
+    app.querySelectorAll('[data-search-id]').forEach(function(input){
+      var suffix = input.getAttribute('data-search-id');
+      input.addEventListener('input', function(e){
+        ui.search = e.target.value; ui.searchFocusId = suffix; ui.page = 1; ui.vencPage = 1; ui.stockPage = 1; render(); preserveFocus('search-input-' + suffix);
+      });
+      input.addEventListener('focus', function(){
+        if(ui.searchFocusId !== suffix){ ui.searchFocusId = suffix; render(); preserveFocus('search-input-' + suffix); }
+      });
+      input.addEventListener('blur', function(){
+        setTimeout(function(){
+          var active = document.activeElement;
+          var stillOnThisBox = active && active.id === ('search-input-' + suffix);
+          if(!stillOnThisBox){ ui.searchFocusId = null; render(); }
+        }, 150);
+      });
+    });
+    app.querySelectorAll('[data-suggest]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        ui.search = btn.getAttribute('data-suggest');
+        ui.searchFocusId = null;
+        ui.page = 1;
+        ui.vencPage = 1;
+        ui.stockPage = 1;
+        render();
+      });
+    });
+
+    app.querySelectorAll('[data-filter]').forEach(function(btn){
+      btn.addEventListener('click', function(){ ui.filter = btn.getAttribute('data-filter'); ui.page = 1; render(); });
+    });
+
+    var clearClaseBtn = app.querySelector('[data-clear-clase]');
+    if(clearClaseBtn) clearClaseBtn.addEventListener('click', function(){ ui.claseFilter = null; ui.page = 1; ui.vencPage = 1; ui.stockPage = 1; render(); });
+
+    app.querySelectorAll('[data-clase-filter]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var c = btn.getAttribute('data-clase-filter');
+        ui.claseFilter = (ui.claseFilter === c) ? null : c;
+        ui.page = 1;
+        ui.vencPage = 1;
+        ui.stockPage = 1;
+        render();
+        if(ui.claseFilter){
+          var tableWrap = document.querySelector('.table-wrap');
+          if(tableWrap) tableWrap.scrollIntoView({ behavior:'smooth', block:'start' });
+        }
+      });
+    });
+
+    function scrollTableIntoView(){
+      var tableWrap = document.querySelector('.table-wrap');
+      if(tableWrap) tableWrap.scrollIntoView({ behavior:'smooth', block:'start' });
+    }
+
+    var clearTop10Btn = app.querySelector('[data-clear-top10]');
+    if(clearTop10Btn) clearTop10Btn.addEventListener('click', function(){ ui.top10Filter = false; ui.page = 1; ui.vencPage = 1; ui.stockPage = 1; render(); });
+
+    var top10Btn = app.querySelector('[data-top10-filter]');
+    if(top10Btn) top10Btn.addEventListener('click', function(){
+      ui.top10Filter = !ui.top10Filter;
+      ui.page = 1; ui.vencPage = 1; ui.stockPage = 1;
+      if(ui.top10Filter) ui.tab = 'stock';
+      render();
+      if(ui.top10Filter) scrollTableIntoView();
+    });
+
+    var clearProvBtn = app.querySelector('[data-clear-prov]');
+    if(clearProvBtn) clearProvBtn.addEventListener('click', function(){ ui.provFilter = null; ui.page = 1; ui.vencPage = 1; ui.stockPage = 1; render(); });
+
+    app.querySelectorAll('[data-prov-filter]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var lab = btn.getAttribute('data-prov-filter');
+        ui.provFilter = (ui.provFilter === lab) ? null : lab;
+        ui.page = 1; ui.vencPage = 1; ui.stockPage = 1;
+        render();
+        if(ui.provFilter) scrollTableIntoView();
+      });
+    });
+
+    var clearTipoBtn = app.querySelector('[data-clear-tipo]');
+    if(clearTipoBtn) clearTipoBtn.addEventListener('click', function(){ ui.tipoFilter = null; ui.page = 1; ui.vencPage = 1; ui.stockPage = 1; render(); });
+
+    var labSelect = document.getElementById('lab-select');
+    if(labSelect) labSelect.addEventListener('change', function(){
+      ui.provFilter = labSelect.value || null;
+      ui.page = 1; ui.vencPage = 1; ui.stockPage = 1; ui.tab = 'stock';
+      render();
+      scrollTableIntoView();
+    });
+
+    var tipoSelect = document.getElementById('tipo-select');
+    if(tipoSelect) tipoSelect.addEventListener('change', function(){
+      ui.tipoFilter = tipoSelect.value || null;
+      ui.page = 1; ui.vencPage = 1; ui.stockPage = 1; ui.tab = 'stock';
+      render();
+      scrollTableIntoView();
+    });
+
+    app.querySelectorAll('[data-tab]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        ui.tab = btn.getAttribute('data-tab');
+        render();
+        window.scrollTo({ top:0, behavior:'smooth' });
+      });
+    });
+
+    var clearMonthBtn = app.querySelector('[data-clear-month]');
+    if(clearMonthBtn) clearMonthBtn.addEventListener('click', function(){ ui.monthFilter = null; ui.vencPage = 1; render(); });
+
+    app.querySelectorAll('[data-month-filter]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var raw = btn.getAttribute('data-month-filter');
+        var key = raw === 'vencido' ? 'vencido' : Number(raw);
+        ui.monthFilter = (ui.monthFilter === key) ? null : key;
+        ui.vencPage = 1;
+        render();
+        var panel = document.getElementById('venc365-panel');
+        if(panel) panel.scrollIntoView({ behavior:'smooth', block:'start' });
+      });
+    });
+
+    app.querySelectorAll('[data-info-btn]').forEach(function(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        var key = btn.getAttribute('data-info-btn');
+        ui.infoOpen = (ui.infoOpen === key) ? null : key;
+        render();
+      });
+    });
+
+    app.querySelectorAll('[data-sort]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var key = btn.getAttribute('data-sort');
+        if(ui.sortField === key){ ui.sortDir = ui.sortDir === 'asc' ? 'desc' : 'asc'; }
+        else { ui.sortField = key; ui.sortDir = 'asc'; }
+        ui.page = 1;
+        render();
+      });
+    });
+
+    var pdfBtn = document.getElementById('btn-pdf');
+    if(pdfBtn) pdfBtn.addEventListener('click', downloadPdf);
+    var xlsxBtn = document.getElementById('btn-xlsx');
+    if(xlsxBtn) xlsxBtn.addEventListener('click', downloadExcel);
+
+    var pagerPrev = document.getElementById('pager-prev');
+    if(pagerPrev) pagerPrev.addEventListener('click', function(){ if(ui.page > 1){ ui.page -= 1; render(); } });
+    var pagerNext = document.getElementById('pager-next');
+    if(pagerNext) pagerNext.addEventListener('click', function(){ ui.page += 1; render(); });
+
+    app.querySelectorAll('[data-panel-prev]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var key = btn.getAttribute('data-panel-prev');
+        if(ui[key] > 1){ ui[key] -= 1; render(); }
+      });
+    });
+    app.querySelectorAll('[data-panel-next]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var key = btn.getAttribute('data-panel-next');
+        ui[key] += 1; render();
+      });
+    });
+
+  }
+
+  function preserveFocus(id){
+    var el = document.getElementById(id);
+    if(el){ el.focus(); var v = el.value; el.value=''; el.value=v; }
+  }
+
+  document.addEventListener('click', function(){
+    if(ui.infoOpen){ ui.infoOpen = null; render(); }
+  });
+
+  render();
+})();
+</script>
+
+</body></html>
